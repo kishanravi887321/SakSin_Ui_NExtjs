@@ -15,7 +15,6 @@ import { useRouter } from "next/navigation"
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL 
 
-console.log("BASE_URL:", BASE_URL)
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
