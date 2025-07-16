@@ -12,12 +12,14 @@ import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL 
 
 console.log("BASE_URL:", BASE_URL)
 
 export default function LoginPage() {
+  const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [showOtpField, setShowOtpField] = useState(false)
@@ -58,10 +60,7 @@ export default function LoginPage() {
           alert("OTP sent to your email/phone. Please enter it to complete login.")
         } else if (data.access) {
           // Example: backend returns JWT token directly
-          localStorage.setItem("accessToken", data.access)
-          if (data.refresh) {
-            localStorage.setItem("refreshToken", data.refresh)
-          }
+          login(data.access, data.refresh)
           router.push("/dashboard")
         } else {
           // Handle other successful but unexpected responses
@@ -100,10 +99,7 @@ export default function LoginPage() {
 
       if (response.ok) {
         // OTP verified, redirect to dashboard
-        localStorage.setItem("accessToken", data.access)
-        if (data.refresh) {
-          localStorage.setItem("refreshToken", data.refresh)
-        }
+        login(data.access, data.refresh)
         router.push("/dashboard")
       } else {
         setError(data.detail || "OTP verification failed. Please try again.")

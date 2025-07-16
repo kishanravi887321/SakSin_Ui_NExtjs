@@ -7,6 +7,8 @@ import { ArrowRight, Brain, Camera, BarChart3, Sparkles, Star, Shield, Zap, Targ
 import Link from "next/link"
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
+import AuthStatus from "@/components/auth-status"
+import { useAuth } from "@/hooks/use-auth"
 
 const companies = [
   { name: "Google", logo: "🔍" },
@@ -96,6 +98,7 @@ const stats = [
 
 export default function LandingPage() {
   const [currentTestimonial, setCurrentTestimonial] = useState(0)
+  const { isAuthenticated, isLoading } = useAuth()
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -103,6 +106,11 @@ export default function LandingPage() {
     }, 5000)
     return () => clearInterval(interval)
   }, [])
+
+  // Show authentication status if user has interacted with auth system
+  if (typeof window !== 'undefined' && (isAuthenticated || localStorage.getItem('accessToken'))) {
+    return <AuthStatus />
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
