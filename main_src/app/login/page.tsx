@@ -10,9 +10,17 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
+
+// Extend Window interface for google
+declare global {
+  interface Window {
+    google: any;
+    handleCredentialResponse: (response: any) => void;
+  }
+}
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL 
 
@@ -31,6 +39,159 @@ export default function LoginPage() {
   })
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  // Initialize Google Sign-In
+  useEffect(() => {
+    const initializeGoogleSignIn = () => {
+      
+      
+      if (window.google && window.google.accounts) {
+        console.log('Google accounts available, initializing...')
+        try {
+          window.google.accounts.id.initialize({
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+            callback: handleGoogleSignIn,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          })
+          console.log('Google Sign-In initialized successfully')
+        } catch (error) {
+          console.error('Error initializing Google Sign-In:', error)
+        }
+      } else {
+        console.error('Google accounts not available')
+      }
+    }
+
+    // Load Google Identity Services script
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      console.log('Google script loaded successfully')
+      initializeGoogleSignIn()
+    }
+    script.onerror = (error) => {
+      console.error('Failed to load Google script:', error)
+    }
+    
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]')
+    if (!existingScript) {
+      document.head.appendChild(script)
+    } else {
+      initializeGoogleSignIn()
+    }
+
+    return () => {
+      if (script && document.head.contains(script)) {
+        document.head.removeChild(script)
+      }
+    }
+  }, [])
+
+  const handleGoogleSignIn = async (response: any) => {
+    console.log('Google Sign-In Response:', response)
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Send the ID token to your backend
+      const backendResponse = await fetch(`${BASE_URL}/api/users/auth/google/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_token: response.credential,
+        }),
+      })
+
+      const data = await backendResponse.json()
+      console.log('Backend response:', data)
+
+      if (backendResponse.ok) {
+        // Successfully authenticated with Google
+        login(data.accessToken, data.refreshToken)
+        
+        if (data.is_new_user) {
+          // New user - might want to redirect to profile completion
+          alert('Welcome! Please complete your profile.')
+          router.push('/profile')
+        } else {
+          // Existing user - redirect to dashboard
+          router.push('/dashboard')
+        }
+      } else {
+        setError(data.detail || 'Google authentication failed')
+      }
+    } catch (error) {
+      console.error('Google Sign-In Error:', error)
+      setError('Google authentication failed. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleButtonClick = () => {
+    console.log('Google button clicked')
+    console.log('Google available:', !!window.google)
+    console.log('Google accounts available:', !!window.google?.accounts)
+    console.log('Google ID available:', !!window.google?.accounts?.id)
+    
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      try {
+        console.log('Calling Google prompt...')
+        window.google.accounts.id.prompt((notification: any) => {
+          console.log('Google prompt notification:', notification)
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            console.log('Google prompt was not displayed or skipped')
+            // Try alternative method - render button
+            renderGoogleButton()
+          }
+        })
+      } catch (error) {
+        console.error('Error calling Google prompt:', error)
+        setError('Google Sign-In failed to initialize. Please refresh the page and try again.')
+      }
+    } else {
+      console.error('Google Sign-In not properly initialized')
+      setError('Google Sign-In is not available. Please refresh the page and try again.')
+    }
+  }
+
+  const renderGoogleButton = () => {
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      try {
+        // Create a temporary div for the Google button
+        const buttonDiv = document.createElement('div')
+        buttonDiv.id = 'google-signin-button'
+        document.body.appendChild(buttonDiv)
+        
+        window.google.accounts.id.renderButton(buttonDiv, {
+          theme: 'outline',
+          size: 'large',
+          type: 'standard',
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: 250,
+        })
+        
+        // Trigger click on the Google button
+        setTimeout(() => {
+          const googleButton = buttonDiv.querySelector('div[role="button"]')
+          if (googleButton) {
+            (googleButton as HTMLElement).click()
+            document.body.removeChild(buttonDiv)
+          }
+        }, 100)
+      } catch (error) {
+        console.error('Error rendering Google button:', error)
+      }
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -329,6 +490,9 @@ export default function LoginPage() {
               {/* Social Login */}
               <div className="grid grid-cols-2 gap-4">
                 <Button
+                  type="button"
+                  onClick={handleGoogleButtonClick}
+                  disabled={isLoading}
                   variant="outline"
                   className="border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl h-12"
                 >
