@@ -132,25 +132,25 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <DashboardHeader />
 
-      <div className="container mx-auto px-6 py-8">
+      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Welcome Section */}
         <motion.div
-          className="mb-8"
+          className="mb-6 sm:mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-            <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Welcome back, Alex! 👋</h1>
-              <p className="text-slate-300 text-lg">Ready to ace your next interview? Let's continue your journey.</p>
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-6">
+            <div className="mb-4 md:mb-0">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">Welcome back, Alex! 👋</h1>
+              <p className="text-slate-300 text-sm sm:text-base md:text-lg">Ready to ace your next interview? Let's continue your journey.</p>
             </div>
-            <div className="flex items-center space-x-4 mt-4 md:mt-0">
-              <Button className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mt-4 md:mt-0">
+              <Button className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl text-sm sm:text-base">
                 <Play className="w-4 h-4 mr-2" />
                 Start Practice
               </Button>
-              <Button variant="outline" className="border-slate-500/50 text-slate-300 bg-transparent rounded-xl">
+              <Button variant="outline" className="border-slate-500/50 text-slate-300 bg-transparent rounded-xl text-sm sm:text-base">
                 <BookOpen className="w-4 h-4 mr-2" />
                 Study Guide
               </Button>
@@ -160,7 +160,7 @@ export default function Dashboard() {
 
         {/* Quick Stats */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
@@ -168,15 +168,15 @@ export default function Dashboard() {
           {quickStats.map((stat, index) => (
             <motion.div key={stat.title} whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
               <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 rounded-2xl">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-slate-400 text-sm font-medium">{stat.title}</p>
-                      <p className="text-2xl font-bold text-white mt-1">{stat.value}</p>
-                      <p className={`text-sm mt-1 ${stat.color}`}>{stat.change} from last month</p>
+                <CardContent className="p-3 sm:p-4 md:p-6">
+                  <div className="flex flex-col space-y-2 sm:space-y-0 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-slate-400 text-xs sm:text-sm font-medium truncate">{stat.title}</p>
+                      <p className="text-lg sm:text-xl md:text-2xl font-bold text-white mt-1">{stat.value}</p>
+                      <p className={`text-xs sm:text-sm mt-1 ${stat.color} truncate`}>{stat.change} from last month</p>
                     </div>
-                    <div className={`p-3 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800`}>
-                      <stat.icon className={`w-6 h-6 ${stat.color}`} />
+                    <div className={`p-2 sm:p-3 rounded-xl bg-gradient-to-br from-slate-700 to-slate-800 self-center sm:self-auto`}>
+                      <stat.icon className={`w-4 h-4 sm:w-5 md:w-6 sm:h-5 md:h-6 ${stat.color}`} />
                     </div>
                   </div>
                 </CardContent>
@@ -185,19 +185,19 @@ export default function Dashboard() {
           ))}
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6 sm:gap-8">
           {/* Recent Sessions */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-1 lg:order-1">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 rounded-2xl">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-white text-xl">Recent Practice Sessions</CardTitle>
-                    <div className="flex items-center space-x-2">
+                <CardHeader className="pb-4 px-4 sm:px-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-3 sm:space-y-0">
+                    <CardTitle className="text-white text-lg sm:text-xl">Recent Practice Sessions</CardTitle>
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                       <div className="relative">
                         <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
                         <input
@@ -205,7 +205,7 @@ export default function Dashboard() {
                           placeholder="Search sessions..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="bg-slate-700/50 border border-slate-600/50 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                          className="bg-slate-700/50 border border-slate-600/50 rounded-lg pl-10 pr-4 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 w-full sm:w-auto"
                         />
                       </div>
                       <Button variant="outline" size="sm" className="border-slate-600/50 text-slate-300 bg-transparent">
@@ -214,38 +214,38 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 px-4 sm:px-6">
                   {recentSessions.map((session, index) => (
                     <motion.div
                       key={session.id}
-                      className="flex items-center justify-between p-4 bg-slate-700/30 rounded-xl hover:bg-slate-700/50 transition-colors group"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-slate-700/30 rounded-xl hover:bg-slate-700/50 transition-colors group space-y-3 sm:space-y-0"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.1 }}
                       whileHover={{ scale: 1.01 }}
                     >
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center text-xl">
+                      <div className="flex items-center space-x-3 sm:space-x-4">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-xl flex items-center justify-center text-lg sm:text-xl">
                           {session.emoji}
                         </div>
-                        <div>
-                          <h4 className="text-white font-semibold">{session.role}</h4>
-                          <p className="text-slate-400 text-sm">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-white font-semibold text-sm sm:text-base truncate">{session.role}</h4>
+                          <p className="text-slate-400 text-xs sm:text-sm">
                             {session.company} • {session.date}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <p className="text-emerald-400 font-semibold">{session.score}/100</p>
-                          <p className="text-slate-400 text-sm">{session.duration}</p>
+                      <div className="flex items-center justify-between sm:justify-end space-x-4">
+                        <div className="text-left sm:text-right">
+                          <p className="text-emerald-400 font-semibold text-sm sm:text-base">{session.score}/100</p>
+                          <p className="text-slate-400 text-xs sm:text-sm">{session.duration}</p>
                         </div>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                             >
                               <MoreVertical className="w-4 h-4" />
                             </Button>
@@ -267,7 +267,7 @@ export default function Dashboard() {
                   ))}
                   <Button
                     variant="outline"
-                    className="w-full border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl"
+                    className="w-full border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl text-sm sm:text-base"
                   >
                     View All Sessions
                   </Button>
@@ -277,7 +277,7 @@ export default function Dashboard() {
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6 order-2 lg:order-2">
             {/* Upcoming Sessions */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
@@ -285,29 +285,29 @@ export default function Dashboard() {
               transition={{ duration: 0.6, delay: 0.3 }}
             >
               <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 rounded-2xl">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-white text-lg flex items-center">
-                    <Calendar className="w-5 h-5 mr-2 text-emerald-400" />
+                <CardHeader className="pb-4 px-4 sm:px-6">
+                  <CardTitle className="text-white text-base sm:text-lg flex items-center">
+                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-emerald-400" />
                     Upcoming Sessions
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
                   {upcomingSessions.map((session, index) => (
                     <motion.div
                       key={session.id}
-                      className="p-4 bg-slate-700/30 rounded-xl"
+                      className="p-3 sm:p-4 bg-slate-700/30 rounded-xl"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 + index * 0.1 }}
                     >
                       <div className="flex items-center space-x-3 mb-2">
-                        <span className="text-2xl">{session.emoji}</span>
-                        <div>
-                          <h4 className="text-white font-semibold text-sm">{session.role}</h4>
-                          <p className="text-slate-400 text-xs">{session.company}</p>
+                        <span className="text-xl sm:text-2xl">{session.emoji}</span>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-white font-semibold text-xs sm:text-sm truncate">{session.role}</h4>
+                          <p className="text-slate-400 text-xs truncate">{session.company}</p>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center justify-between text-xs sm:text-sm">
                         <span className="text-slate-300">{session.date}</span>
                         <span className="text-emerald-400">{session.time}</span>
                       </div>
@@ -318,7 +318,7 @@ export default function Dashboard() {
                       </div>
                     </motion.div>
                   ))}
-                  <Button className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl">
+                  <Button className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl text-sm sm:text-base">
                     Schedule New Session
                   </Button>
                 </CardContent>
@@ -332,30 +332,30 @@ export default function Dashboard() {
               transition={{ duration: 0.6, delay: 0.4 }}
             >
               <Card className="bg-gradient-to-br from-emerald-500/20 to-blue-500/20 backdrop-blur-sm border-emerald-500/30 rounded-2xl">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-white text-lg flex items-center">
-                    <TrendingUp className="w-5 h-5 mr-2 text-emerald-400" />
+                <CardHeader className="pb-4 px-4 sm:px-6">
+                  <CardTitle className="text-white text-base sm:text-lg flex items-center">
+                    <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-emerald-400" />
                     Your Progress
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                <CardContent className="px-4 sm:px-6">
+                  <div className="space-y-3 sm:space-y-4">
                     <div>
-                      <div className="flex justify-between text-sm mb-2">
+                      <div className="flex justify-between text-xs sm:text-sm mb-2">
                         <span className="text-slate-300">Interview Skills</span>
                         <span className="text-emerald-400">86%</span>
                       </div>
                       <Progress value={86} className="h-2" />
                     </div>
                     <div>
-                      <div className="flex justify-between text-sm mb-2">
+                      <div className="flex justify-between text-xs sm:text-sm mb-2">
                         <span className="text-slate-300">Technical Knowledge</span>
                         <span className="text-blue-400">78%</span>
                       </div>
                       <Progress value={78} className="h-2" />
                     </div>
                     <div>
-                      <div className="flex justify-between text-sm mb-2">
+                      <div className="flex justify-between text-xs sm:text-sm mb-2">
                         <span className="text-slate-300">Communication</span>
                         <span className="text-purple-400">92%</span>
                       </div>
@@ -364,7 +364,7 @@ export default function Dashboard() {
                   </div>
                   <Button
                     variant="outline"
-                    className="w-full mt-4 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 bg-transparent rounded-xl"
+                    className="w-full mt-4 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 bg-transparent rounded-xl text-sm sm:text-base"
                   >
                     View Detailed Analytics
                   </Button>
@@ -379,14 +379,14 @@ export default function Dashboard() {
               transition={{ duration: 0.6, delay: 0.5 }}
             >
               <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 rounded-2xl">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-white text-lg">Quick Actions</CardTitle>
+                <CardHeader className="pb-4 px-4 sm:px-6">
+                  <CardTitle className="text-white text-base sm:text-lg">Quick Actions</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-3 px-4 sm:px-6">
                   <Link href="/roles">
                     <Button
                       variant="outline"
-                      className="w-full justify-start border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl"
+                      className="w-full justify-start border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl text-sm sm:text-base"
                     >
                       <Play className="w-4 h-4 mr-2" />
                       Start New Interview
@@ -395,7 +395,7 @@ export default function Dashboard() {
                   <Link href="/insights">
                     <Button
                       variant="outline"
-                      className="w-full justify-start border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl"
+                      className="w-full justify-start border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl text-sm sm:text-base"
                     >
                       <BarChart3 className="w-4 h-4 mr-2" />
                       View Insights
@@ -404,7 +404,7 @@ export default function Dashboard() {
                   <Link href="/profile">
                     <Button
                       variant="outline"
-                      className="w-full justify-start border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl"
+                      className="w-full justify-start border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl text-sm sm:text-base"
                     >
                       <Settings className="w-4 h-4 mr-2" />
                       Profile Settings

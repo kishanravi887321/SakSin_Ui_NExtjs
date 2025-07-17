@@ -811,14 +811,14 @@ export default function ProfilePage() {
                   {/* Social Links */}
                   <div>
                     <Label className="text-slate-400 text-sm mb-3 block">Social Links</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {/* LinkedIn */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                          <Linkedin className="w-5 h-5 text-blue-400" />
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Linkedin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                         </div>
-                        <div className="flex-1">
-                          <Label className="text-slate-400 text-xs">LinkedIn</Label>
+                        <div className="flex-1 min-w-0">
+                          <Label className="text-slate-400 text-xs hidden sm:block">LinkedIn</Label>
                           {isEditing ? (
                             <Input
                               value={editForm.social_links?.linkedin || ""}
@@ -827,13 +827,19 @@ export default function ProfilePage() {
                               placeholder="LinkedIn profile URL"
                             />
                           ) : (
-                            <div className="text-sm text-slate-300 mt-1">
+                            <div className="text-xs sm:text-sm text-slate-300 mt-0 sm:mt-1">
                               {userProfile.social_links?.linkedin ? (
                                 <a href={userProfile.social_links.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">
-                                  {userProfile.social_links.linkedin}
+                                  {/* Show only icon on mobile, full URL on desktop */}
+                                  <span className="sm:hidden">
+                                    <ExternalLink className="w-3 h-3" />
+                                  </span>
+                                  <span className="hidden sm:inline truncate block">
+                                    {userProfile.social_links.linkedin}
+                                  </span>
                                 </a>
                               ) : (
-                                <span className="text-slate-500">Not set</span>
+                                <span className="text-slate-500 text-xs sm:text-sm">Not set</span>
                               )}
                             </div>
                           )}
@@ -841,12 +847,12 @@ export default function ProfilePage() {
                       </div>
 
                       {/* GitHub */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-600/20 rounded-lg flex items-center justify-center">
-                          <Github className="w-5 h-5 text-slate-400" />
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Github className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
                         </div>
-                        <div className="flex-1">
-                          <Label className="text-slate-400 text-xs">GitHub</Label>
+                        <div className="flex-1 min-w-0">
+                          <Label className="text-slate-400 text-xs hidden sm:block">GitHub</Label>
                           {isEditing ? (
                             <Input
                               value={editForm.social_links?.github || ""}
@@ -855,13 +861,19 @@ export default function ProfilePage() {
                               placeholder="GitHub profile URL"
                             />
                           ) : (
-                            <div className="text-sm text-slate-300 mt-1">
+                            <div className="text-xs sm:text-sm text-slate-300 mt-0 sm:mt-1">
                               {userProfile.social_links?.github ? (
                                 <a href={userProfile.social_links.github} target="_blank" rel="noopener noreferrer" className="hover:text-slate-300 transition-colors">
-                                  {userProfile.social_links.github}
+                                  {/* Show only icon on mobile, full URL on desktop */}
+                                  <span className="sm:hidden">
+                                    <ExternalLink className="w-3 h-3" />
+                                  </span>
+                                  <span className="hidden sm:inline truncate block">
+                                    {userProfile.social_links.github}
+                                  </span>
                                 </a>
                               ) : (
-                                <span className="text-slate-500">Not set</span>
+                                <span className="text-slate-500 text-xs sm:text-sm">Not set</span>
                               )}
                             </div>
                           )}
@@ -869,12 +881,12 @@ export default function ProfilePage() {
                       </div>
 
                       {/* Twitter */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                          <Twitter className="w-5 h-5 text-blue-400" />
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Twitter className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                         </div>
-                        <div className="flex-1">
-                          <Label className="text-slate-400 text-xs">Twitter</Label>
+                        <div className="flex-1 min-w-0">
+                          <Label className="text-slate-400 text-xs hidden sm:block">Twitter</Label>
                           {isEditing ? (
                             <Input
                               value={editForm.social_links?.twitter || ""}
@@ -883,13 +895,19 @@ export default function ProfilePage() {
                               placeholder="Twitter profile URL"
                             />
                           ) : (
-                            <div className="text-sm text-slate-300 mt-1">
+                            <div className="text-xs sm:text-sm text-slate-300 mt-0 sm:mt-1">
                               {userProfile.social_links?.twitter ? (
                                 <a href={userProfile.social_links.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">
-                                  {userProfile.social_links.twitter}
+                                  {/* Show only icon on mobile, full URL on desktop */}
+                                  <span className="sm:hidden">
+                                    <ExternalLink className="w-3 h-3" />
+                                  </span>
+                                  <span className="hidden sm:inline truncate block">
+                                    {userProfile.social_links.twitter}
+                                  </span>
                                 </a>
                               ) : (
-                                <span className="text-slate-500">Not set</span>
+                                <span className="text-slate-500 text-xs sm:text-sm">Not set</span>
                               )}
                             </div>
                           )}
@@ -897,12 +915,12 @@ export default function ProfilePage() {
                       </div>
 
                       {/* Website */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-emerald-600/20 rounded-lg flex items-center justify-center">
-                          <Globe className="w-5 h-5 text-emerald-400" />
+                      <div className="flex items-center gap-2 sm:gap-3">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
                         </div>
-                        <div className="flex-1">
-                          <Label className="text-slate-400 text-xs">Website</Label>
+                        <div className="flex-1 min-w-0">
+                          <Label className="text-slate-400 text-xs hidden sm:block">Website</Label>
                           {isEditing ? (
                             <Input
                               value={editForm.social_links?.website || ""}
@@ -911,13 +929,19 @@ export default function ProfilePage() {
                               placeholder="Personal website URL"
                             />
                           ) : (
-                            <div className="text-sm text-slate-300 mt-1">
+                            <div className="text-xs sm:text-sm text-slate-300 mt-0 sm:mt-1">
                               {userProfile.social_links?.website ? (
                                 <a href={userProfile.social_links.website} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">
-                                  {userProfile.social_links.website}
+                                  {/* Show only icon on mobile, full URL on desktop */}
+                                  <span className="sm:hidden">
+                                    <ExternalLink className="w-3 h-3" />
+                                  </span>
+                                  <span className="hidden sm:inline truncate block">
+                                    {userProfile.social_links.website}
+                                  </span>
                                 </a>
                               ) : (
-                                <span className="text-slate-500">Not set</span>
+                                <span className="text-slate-500 text-xs sm:text-sm">Not set</span>
                               )}
                             </div>
                           )}
@@ -933,37 +957,37 @@ export default function ProfilePage() {
 
         {/* Stats Cards */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
           <Card className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 backdrop-blur-sm border-emerald-500/30 rounded-2xl">
-            <CardContent className="p-6 text-center">
-              <Trophy className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
-              <p className="text-2xl font-bold text-white">24</p>
-              <p className="text-emerald-400 text-sm">Total Sessions</p>
+            <CardContent className="p-3 sm:p-4 md:p-6 text-center">
+              <Trophy className="w-6 h-6 sm:w-7 md:w-8 sm:h-7 md:h-8 text-emerald-400 mx-auto mb-2 sm:mb-3" />
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">24</p>
+              <p className="text-emerald-400 text-xs sm:text-sm">Total Sessions</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-sm border-blue-500/30 rounded-2xl">
-            <CardContent className="p-6 text-center">
-              <Target className="w-8 h-8 text-blue-400 mx-auto mb-3" />
-              <p className="text-2xl font-bold text-white">86%</p>
-              <p className="text-blue-400 text-sm">Avg Score</p>
+            <CardContent className="p-3 sm:p-4 md:p-6 text-center">
+              <Target className="w-6 h-6 sm:w-7 md:w-8 sm:h-7 md:h-8 text-blue-400 mx-auto mb-2 sm:mb-3" />
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">86%</p>
+              <p className="text-blue-400 text-xs sm:text-sm">Avg Score</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-sm border-purple-500/30 rounded-2xl">
-            <CardContent className="p-6 text-center">
-              <Clock className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-              <p className="text-2xl font-bold text-white">18h</p>
-              <p className="text-purple-400 text-sm">Practice Time</p>
+            <CardContent className="p-3 sm:p-4 md:p-6 text-center">
+              <Clock className="w-6 h-6 sm:w-7 md:w-8 sm:h-7 md:h-8 text-purple-400 mx-auto mb-2 sm:mb-3" />
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">18h</p>
+              <p className="text-purple-400 text-xs sm:text-sm">Practice Time</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 backdrop-blur-sm border-orange-500/30 rounded-2xl">
-            <CardContent className="p-6 text-center">
-              <Award className="w-8 h-8 text-orange-400 mx-auto mb-3" />
-              <p className="text-2xl font-bold text-white">4</p>
-              <p className="text-orange-400 text-sm">Achievements</p>
+            <CardContent className="p-3 sm:p-4 md:p-6 text-center">
+              <Award className="w-6 h-6 sm:w-7 md:w-8 sm:h-7 md:h-8 text-orange-400 mx-auto mb-2 sm:mb-3" />
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">4</p>
+              <p className="text-orange-400 text-xs sm:text-sm">Achievements</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -1098,11 +1122,11 @@ export default function ProfilePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {achievements.map((achievement, index) => (
                         <motion.div
                           key={achievement.id}
-                          className={`p-4 rounded-xl border-2 transition-all duration-300 ${
+                          className={`p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
                             achievement.earned
                               ? "bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border-emerald-500/30"
                               : "bg-slate-700/30 border-slate-600/30 opacity-60"
@@ -1112,22 +1136,24 @@ export default function ProfilePage() {
                           transition={{ delay: index * 0.1 }}
                           whileHover={{ scale: achievement.earned ? 1.02 : 1 }}
                         >
-                          <div className="flex items-center space-x-3 mb-2">
-                            <span className="text-2xl">{achievement.icon}</span>
-                            <div>
-                              <h4 className={`font-semibold ${achievement.earned ? "text-white" : "text-slate-400"}`}>
-                                {achievement.title}
-                              </h4>
-                              {achievement.earned && achievement.date && (
-                                <p className="text-emerald-400 text-sm">{achievement.date}</p>
-                              )}
+                          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-2 sm:mb-3">
+                            <div className="flex items-center space-x-3 sm:space-x-0">
+                              <span className="text-xl sm:text-2xl flex-shrink-0">{achievement.icon}</span>
+                              <div className="min-w-0 flex-1 sm:ml-3">
+                                <h4 className={`font-semibold text-sm sm:text-base truncate ${achievement.earned ? "text-white" : "text-slate-400"}`}>
+                                  {achievement.title}
+                                </h4>
+                                {achievement.earned && achievement.date && (
+                                  <p className="text-emerald-400 text-xs sm:text-sm truncate">{achievement.date}</p>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <p className={`text-sm ${achievement.earned ? "text-slate-300" : "text-slate-500"}`}>
+                          <p className={`text-xs sm:text-sm leading-relaxed ${achievement.earned ? "text-slate-300" : "text-slate-500"}`}>
                             {achievement.description}
                           </p>
                           {!achievement.earned && (
-                            <Badge variant="outline" className="mt-2 border-slate-500 text-slate-400">
+                            <Badge variant="outline" className="mt-2 border-slate-500 text-slate-400 text-xs">
                               Locked
                             </Badge>
                           )}
