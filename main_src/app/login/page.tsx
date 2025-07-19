@@ -22,9 +22,9 @@ declare global {
   }
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-console.log("BASE_URL:", BASE_URL)
+console.log("API_BASE_URL:", API_BASE_URL)
 
 export default function LoginPage() {
   const { login } = useAuth()
@@ -45,6 +45,9 @@ export default function LoginPage() {
     const initializeGoogleSignIn = () => {
       console.log('Initializing Google Sign-In...')
       console.log('Google Client ID:', process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID)
+      console.log('Current origin:', window.location.origin)
+      console.log('Current hostname:', window.location.hostname)
+      console.log('Current port:', window.location.port)
       
       if (window.google && window.google.accounts) {
         console.log('Google accounts available, initializing...')
@@ -54,10 +57,12 @@ export default function LoginPage() {
             callback: handleGoogleSignIn,
             auto_select: false,
             cancel_on_tap_outside: true,
+            ux_mode: 'popup',
           })
           console.log('Google Sign-In initialized successfully')
         } catch (error) {
           console.error('Error initializing Google Sign-In:', error)
+          setError(`Google Sign-In initialization failed. Please ensure ${window.location.origin} is added to authorized origins in Google Cloud Console.`)
         }
       } else {
         console.error('Google accounts not available')
@@ -99,7 +104,7 @@ export default function LoginPage() {
 
     try {
       // Send the ID token to your backend
-      const backendResponse = await fetch(`${BASE_URL}/api/users/auth/google/`, {
+      const backendResponse = await fetch(`${API_BASE_URL}/api/users/auth/google/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,8 +114,16 @@ export default function LoginPage() {
         }),
       })
 
+      console.log('Google auth API response status:', backendResponse.status)
+
+      if (!backendResponse.ok) {
+        const errorText = await backendResponse.text()
+        console.error('Google auth API error:', errorText)
+        throw new Error(`HTTP ${backendResponse.status}: ${errorText}`)
+      }
+
       const data = await backendResponse.json()
-      console.log('Backend response:', data)
+      console.log('Google auth API response data:', data)
 
       if (backendResponse.ok) {
         // Successfully authenticated with Google
@@ -137,6 +150,8 @@ export default function LoginPage() {
 
   const handleGoogleButtonClick = () => {
     console.log('Google button clicked')
+    console.log('Current URL:', window.location.href)
+    console.log('Current origin:', window.location.origin)
     console.log('Google available:', !!window.google)
     console.log('Google accounts available:', !!window.google?.accounts)
     console.log('Google ID available:', !!window.google?.accounts?.id)
@@ -146,15 +161,26 @@ export default function LoginPage() {
         console.log('Calling Google prompt...')
         window.google.accounts.id.prompt((notification: any) => {
           console.log('Google prompt notification:', notification)
+          console.log('Notification type:', notification.g)
+          console.log('Is displayed:', !notification.isNotDisplayed())
+          console.log('Is skipped:', notification.isSkippedMoment())
+          
+          // Check for origin error
+          if (notification.g === 'unregistered_origin') {
+            const errorMsg = `Google OAuth Error: Current origin '${window.location.origin}' is not authorized. Please add it to Google Cloud Console → APIs & Credentials → OAuth 2.0 Client IDs.`
+            console.error(errorMsg)
+            setError(errorMsg)
+            return
+          }
+          
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            console.log('Google prompt was not displayed or skipped')
-            // Try alternative method - render button
+            console.log('Google prompt was not displayed or skipped, trying button render...')
             renderGoogleButton()
           }
         })
       } catch (error) {
         console.error('Error calling Google prompt:', error)
-        setError('Google Sign-In failed to initialize. Please refresh the page and try again.')
+        setError(`Google Sign-In failed: ${error}. Please ensure ${window.location.origin} is added to Google Cloud Console authorized origins.`)
       }
     } else {
       console.error('Google Sign-In not properly initialized')
@@ -200,7 +226,7 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const response = await fetch(`${BASE_URL}/api/users/login/`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/login/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -211,7 +237,17 @@ export default function LoginPage() {
         }),
       })
 
+      console.log('Login API response status:', response.status)
+      console.log('Login API response headers:', response.headers)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Login API error:', errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+
       const data = await response.json()
+      console.log('Login API response data:', data)
 
       if (response.ok) {
         // Assuming your backend sends a flag like 'otp_required' or similar
@@ -246,7 +282,7 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const response = await fetch(`${BASE_URL}/api/users/auth/login/`, {
+      const response = await fetch(`${API_BASE_URL}/api/users/auth/login/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
