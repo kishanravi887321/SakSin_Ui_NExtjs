@@ -40,7 +40,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Upload, Camera } from "lucide-react"
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 interface UserProfile {
   id?: number
@@ -340,10 +340,15 @@ export default function ProfilePage() {
   const handleEditToggle = () => {
     if (isEditing) {
       // Reset form to original data if canceling
-      setEditForm(userProfile)
+      setEditForm({ ...userProfile })
       setSelectedImageFile(null)
       setImagePreview(null)
       setUsernameError(null)
+      console.log('Edit cancelled, reset form to:', userProfile)
+    } else {
+      // When entering edit mode, ensure we have the latest data
+      setEditForm({ ...userProfile })
+      console.log('Entering edit mode with data:', userProfile)
     }
     setIsEditing(!isEditing)
   }
@@ -401,6 +406,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     try {
       setIsSaving(true)
+      console.log('Starting profile save with editForm:', editForm)
       
       // Only check username if it's being changed and user doesn't have one
       if (editForm.username !== userProfile.username) {
@@ -419,15 +425,22 @@ export default function ProfilePage() {
       if (editForm.name) formData.append('name', editForm.name)
       
       // Add social links
-      if (editForm.social_links?.linkedin) formData.append('linkedin', editForm.social_links.linkedin)
-      if (editForm.social_links?.github) formData.append('github', editForm.social_links.github)
-      if (editForm.social_links?.twitter) formData.append('twitter', editForm.social_links.twitter)
-      if (editForm.social_links?.website) formData.append('website', editForm.social_links.website)
+      const socialLinksData = {
+        linkedin: editForm.social_links?.linkedin || "",
+        github: editForm.social_links?.github || "",
+        twitter: editForm.social_links?.twitter || "",
+        website: editForm.social_links?.website || ""
+      }
+      console.log('Social links being sent:', socialLinksData)
+      formData.append('social_links', JSON.stringify(socialLinksData))
       
       // Add image file if selected
       if (selectedImageFile) {
         formData.append('photo', selectedImageFile)
+        console.log('Image file selected:', selectedImageFile.name)
       }
+      
+      console.log('Sending PATCH request to:', `${BASE_URL}/api/users/profile/update/`)
       
       const response = await fetch(`${BASE_URL}/api/users/profile/update/`, {
         method: 'PATCH',
@@ -440,9 +453,31 @@ export default function ProfilePage() {
 
       if (response.ok) {
         const updatedData = await response.json()
+        console.log('Profile updated successfully:', updatedData)
         
-        // Refresh the profile data to get the latest from server
-        await refreshProfile()
+        // Process the updated data to match our interface structure
+        const processedData: UserProfile = {
+          id: updatedData.id,
+          username: updatedData.username || "",
+          email: updatedData.email || "",
+          role: updatedData.role || "student",
+          bio: updatedData.bio || "",
+          profile: updatedData.profile || "",
+          photo: updatedData.photo || updatedData.profile || "",
+          name: updatedData.name || "",
+          date_joined: updatedData.date_joined,
+          is_active: updatedData.is_active,
+          social_links: {
+            linkedin: updatedData.social_links?.linkedin || updatedData.linkedin || "",
+            github: updatedData.social_links?.github || updatedData.github || "",
+            twitter: updatedData.social_links?.twitter || updatedData.twitter || "",
+            website: updatedData.social_links?.website || updatedData.website || ""
+          }
+        }
+        
+        // Update both userProfile and editForm with the processed data
+        setUserProfile(processedData)
+        setEditForm(processedData)
         
         setIsEditing(false)
         
@@ -811,35 +846,35 @@ export default function ProfilePage() {
                   {/* Social Links */}
                   <div>
                     <Label className="text-slate-400 text-sm mb-3 block">Social Links</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       {/* LinkedIn */}
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Linkedin className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Linkedin className="w-5 h-5 text-blue-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <Label className="text-slate-400 text-xs hidden sm:block">LinkedIn</Label>
+                          <Label className="text-slate-400 text-xs block mb-1">LinkedIn</Label>
                           {isEditing ? (
                             <Input
                               value={editForm.social_links?.linkedin || ""}
                               onChange={(e) => handleSocialLinkChange('linkedin', e.target.value)}
-                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm mt-1"
-                              placeholder="LinkedIn profile URL"
+                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm"
+                              placeholder="https://linkedin.com/in/username"
                             />
                           ) : (
-                            <div className="text-xs sm:text-sm text-slate-300 mt-0 sm:mt-1">
+                            <div className="text-sm text-slate-300">
                               {userProfile.social_links?.linkedin ? (
-                                <a href={userProfile.social_links.linkedin} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">
-                                  {/* Show only icon on mobile, full URL on desktop */}
-                                  <span className="sm:hidden">
-                                    <ExternalLink className="w-3 h-3" />
-                                  </span>
-                                  <span className="hidden sm:inline truncate block">
-                                    {userProfile.social_links.linkedin}
-                                  </span>
+                                <a 
+                                  href={userProfile.social_links.linkedin} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="hover:text-blue-400 transition-colors flex items-center gap-2 truncate"
+                                >
+                                  <span className="truncate">{userProfile.social_links.linkedin}</span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                 </a>
                               ) : (
-                                <span className="text-slate-500 text-xs sm:text-sm">Not set</span>
+                                <span className="text-slate-500 text-sm">Not set</span>
                               )}
                             </div>
                           )}
@@ -847,33 +882,33 @@ export default function ProfilePage() {
                       </div>
 
                       {/* GitHub */}
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-slate-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Github className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-slate-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Github className="w-5 h-5 text-slate-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <Label className="text-slate-400 text-xs hidden sm:block">GitHub</Label>
+                          <Label className="text-slate-400 text-xs block mb-1">GitHub</Label>
                           {isEditing ? (
                             <Input
                               value={editForm.social_links?.github || ""}
                               onChange={(e) => handleSocialLinkChange('github', e.target.value)}
-                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm mt-1"
-                              placeholder="GitHub profile URL"
+                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm"
+                              placeholder="https://github.com/username"
                             />
                           ) : (
-                            <div className="text-xs sm:text-sm text-slate-300 mt-0 sm:mt-1">
+                            <div className="text-sm text-slate-300">
                               {userProfile.social_links?.github ? (
-                                <a href={userProfile.social_links.github} target="_blank" rel="noopener noreferrer" className="hover:text-slate-300 transition-colors">
-                                  {/* Show only icon on mobile, full URL on desktop */}
-                                  <span className="sm:hidden">
-                                    <ExternalLink className="w-3 h-3" />
-                                  </span>
-                                  <span className="hidden sm:inline truncate block">
-                                    {userProfile.social_links.github}
-                                  </span>
+                                <a 
+                                  href={userProfile.social_links.github} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="hover:text-slate-300 transition-colors flex items-center gap-2 truncate"
+                                >
+                                  <span className="truncate">{userProfile.social_links.github}</span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                 </a>
                               ) : (
-                                <span className="text-slate-500 text-xs sm:text-sm">Not set</span>
+                                <span className="text-slate-500 text-sm">Not set</span>
                               )}
                             </div>
                           )}
@@ -881,33 +916,33 @@ export default function ProfilePage() {
                       </div>
 
                       {/* Twitter */}
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Twitter className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Twitter className="w-5 h-5 text-blue-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <Label className="text-slate-400 text-xs hidden sm:block">Twitter</Label>
+                          <Label className="text-slate-400 text-xs block mb-1">Twitter</Label>
                           {isEditing ? (
                             <Input
                               value={editForm.social_links?.twitter || ""}
                               onChange={(e) => handleSocialLinkChange('twitter', e.target.value)}
-                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm mt-1"
-                              placeholder="Twitter profile URL"
+                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm"
+                              placeholder="https://twitter.com/username"
                             />
                           ) : (
-                            <div className="text-xs sm:text-sm text-slate-300 mt-0 sm:mt-1">
+                            <div className="text-sm text-slate-300">
                               {userProfile.social_links?.twitter ? (
-                                <a href={userProfile.social_links.twitter} target="_blank" rel="noopener noreferrer" className="hover:text-blue-400 transition-colors">
-                                  {/* Show only icon on mobile, full URL on desktop */}
-                                  <span className="sm:hidden">
-                                    <ExternalLink className="w-3 h-3" />
-                                  </span>
-                                  <span className="hidden sm:inline truncate block">
-                                    {userProfile.social_links.twitter}
-                                  </span>
+                                <a 
+                                  href={userProfile.social_links.twitter} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="hover:text-blue-400 transition-colors flex items-center gap-2 truncate"
+                                >
+                                  <span className="truncate">{userProfile.social_links.twitter}</span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                 </a>
                               ) : (
-                                <span className="text-slate-500 text-xs sm:text-sm">Not set</span>
+                                <span className="text-slate-500 text-sm">Not set</span>
                               )}
                             </div>
                           )}
@@ -915,33 +950,33 @@ export default function ProfilePage() {
                       </div>
 
                       {/* Website */}
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-emerald-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-emerald-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Globe className="w-5 h-5 text-emerald-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <Label className="text-slate-400 text-xs hidden sm:block">Website</Label>
+                          <Label className="text-slate-400 text-xs block mb-1">Website</Label>
                           {isEditing ? (
                             <Input
                               value={editForm.social_links?.website || ""}
                               onChange={(e) => handleSocialLinkChange('website', e.target.value)}
-                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm mt-1"
-                              placeholder="Personal website URL"
+                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm"
+                              placeholder="https://yourwebsite.com"
                             />
                           ) : (
-                            <div className="text-xs sm:text-sm text-slate-300 mt-0 sm:mt-1">
+                            <div className="text-sm text-slate-300">
                               {userProfile.social_links?.website ? (
-                                <a href={userProfile.social_links.website} target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 transition-colors">
-                                  {/* Show only icon on mobile, full URL on desktop */}
-                                  <span className="sm:hidden">
-                                    <ExternalLink className="w-3 h-3" />
-                                  </span>
-                                  <span className="hidden sm:inline truncate block">
-                                    {userProfile.social_links.website}
-                                  </span>
+                                <a 
+                                  href={userProfile.social_links.website} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="hover:text-emerald-400 transition-colors flex items-center gap-2 truncate"
+                                >
+                                  <span className="truncate">{userProfile.social_links.website}</span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
                                 </a>
                               ) : (
-                                <span className="text-slate-500 text-xs sm:text-sm">Not set</span>
+                                <span className="text-slate-500 text-sm">Not set</span>
                               )}
                             </div>
                           )}

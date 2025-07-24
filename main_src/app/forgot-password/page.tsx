@@ -11,7 +11,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -49,7 +49,7 @@ export default function ForgotPasswordPage() {
     // Debug BASE_URL
     console.log('BASE_URL:', BASE_URL)
     console.log('Environment variables:', {
-      NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL,
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
       NODE_ENV: process.env.NODE_ENV
     })
 

@@ -21,7 +21,8 @@ declare global {
   }
 }
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL 
+console.log('Base URL Registration:', BASE_URL)
 
 export default function SignUpPage() {
   const { login } = useAuth()

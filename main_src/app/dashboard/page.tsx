@@ -5,6 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import ProtectedRoute from "@/components/protected-route"
+import { useUser } from "@/hooks/use-user"
+import { getDisplayName, normalizeUserData } from "../../lib/user-utils"
+import { useState } from "react"
 import {
   BarChart3,
   Calendar,
@@ -21,7 +24,6 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { DashboardHeader } from "@/components/dashboard-header"
-import { useState } from "react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { SubscriptionStatus } from "@/components/subscription-status"
 
@@ -126,6 +128,21 @@ const quickStats = [
 
 export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("")
+  
+  // Get user data with error handling
+  const { user, isLoading: userLoading } = useUser()
+  
+  // Safely get display name with fallbacks
+  let displayName = "User"
+  try {
+    if (user) {
+      const normalizedUser = normalizeUserData(user)
+      displayName = getDisplayName(normalizedUser) || "User"
+    }
+  } catch (error) {
+    console.error('Error processing user data:', error)
+    displayName = "User"
+  }
 
   return (
     <ProtectedRoute>
@@ -142,7 +159,9 @@ export default function Dashboard() {
         >
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-4 sm:mb-6">
             <div className="mb-4 md:mb-0">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">Welcome back, Alex! 👋</h1>
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">
+                Welcome back, {displayName}! 👋
+              </h1>
               <p className="text-slate-300 text-sm sm:text-base md:text-lg">Ready to ace your next interview? Let's continue your journey.</p>
             </div>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 mt-4 md:mt-0">
