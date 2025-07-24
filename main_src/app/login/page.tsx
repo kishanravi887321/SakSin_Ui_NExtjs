@@ -124,21 +124,22 @@ export default function LoginPage() {
 
       const data = await backendResponse.json()
       console.log('Google auth API response data:', data)
+      
 
-      if (backendResponse.ok) {
-        // Successfully authenticated with Google
-        login(data.accessToken, data.refreshToken)
-        
-        if (data.is_new_user) {
-          // New user - might want to redirect to profile completion
-          alert('Welcome! Please complete your profile.')
-          router.push('/profile')
-        } else {
-          // Existing user - redirect to dashboard
-          router.push('/dashboard')
-        }
+      // Successfully authenticated with Google - store tokens
+      login(data.accessToken, data.refreshToken)
+      console.log('Tokens stored successfully:', {
+        accessToken: data.accessToken ? 'Present' : 'Missing',
+        refreshToken: data.refreshToken ? 'Present' : 'Missing'
+      })
+      
+      if (data.is_new_user) {
+        // New user - might want to redirect to profile completion
+        alert('Welcome! Please complete your profile.')
+        router.push('/profile')
       } else {
-        setError(data.detail || 'Google authentication failed')
+        // Existing user - redirect to dashboard
+        router.push('/dashboard')
       }
     } catch (error) {
       console.error('Google Sign-In Error:', error)
@@ -259,6 +260,10 @@ export default function LoginPage() {
         } else if (data.access) {
           // Example: backend returns JWT token directly
           login(data.access, data.refresh)
+          console.log('Regular login tokens stored successfully:', {
+            accessToken: data.access ? 'Present' : 'Missing',
+            refreshToken: data.refresh ? 'Present' : 'Missing'
+          })
           router.push("/dashboard")
         } else {
           // Handle other successful but unexpected responses
@@ -298,6 +303,10 @@ export default function LoginPage() {
       if (response.ok) {
         // OTP verified, redirect to dashboard
         login(data.access, data.refresh)
+        console.log('OTP verification tokens stored successfully:', {
+          accessToken: data.access ? 'Present' : 'Missing',
+          refreshToken: data.refresh ? 'Present' : 'Missing'
+        })
         router.push("/dashboard")
       } else {
         setError(data.detail || "OTP verification failed. Please try again.")

@@ -9,6 +9,7 @@ export interface AuthState {
 export const useAuth = (): AuthState & {
   login: (accessToken: string, refreshToken?: string) => void
   logout: () => void
+  getTokens: () => { accessToken: string | null; refreshToken: string | null }
 } => {
   const [authState, setAuthState] = useState<AuthState>({
     isAuthenticated: false,
@@ -42,9 +43,15 @@ export const useAuth = (): AuthState & {
   const login = (accessToken: string, refreshToken?: string) => {
     try {
       localStorage.setItem('accessToken', accessToken)
+      console.log('Access token stored in localStorage')
+      
       if (refreshToken) {
         localStorage.setItem('refreshToken', refreshToken)
+        console.log('Refresh token stored in localStorage')
+      } else {
+        console.log('No refresh token provided')
       }
+      
       setAuthState({
         isAuthenticated: true,
         isLoading: false,
@@ -59,6 +66,7 @@ export const useAuth = (): AuthState & {
     try {
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')
+      console.log('Tokens removed from localStorage')
       setAuthState({
         isAuthenticated: false,
         isLoading: false,
@@ -69,9 +77,25 @@ export const useAuth = (): AuthState & {
     }
   }
 
+  const getTokens = () => {
+    try {
+      return {
+        accessToken: localStorage.getItem('accessToken'),
+        refreshToken: localStorage.getItem('refreshToken'),
+      }
+    } catch (error) {
+      console.error('Error retrieving tokens:', error)
+      return {
+        accessToken: null,
+        refreshToken: null,
+      }
+    }
+  }
+
   return {
     ...authState,
     login,
     logout,
+    getTokens,
   }
 }
