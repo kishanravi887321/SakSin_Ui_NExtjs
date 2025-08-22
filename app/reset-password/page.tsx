@@ -10,7 +10,7 @@ import { Sparkles, Lock, Eye, EyeOff, ArrowLeft, CheckCircle, Mail } from "lucid
 import Link from "next/link"
 import { useState } from "react"
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 export default function ResetPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)

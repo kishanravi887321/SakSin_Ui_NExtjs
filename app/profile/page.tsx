@@ -29,6 +29,7 @@ import {
   Twitter,
   Globe,
   ExternalLink,
+  X,
 } from "lucide-react"
 import { DashboardHeader } from "@/components/dashboard-header"
 import { useState, useEffect } from "react"
@@ -36,9 +37,10 @@ import { useAuth } from "@/hooks/use-auth"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Upload, Camera } from "lucide-react"
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 interface UserProfile {
   id?: number
@@ -47,6 +49,7 @@ interface UserProfile {
   role: string
   bio: string
   profile: string
+  photo?: string  // Add photo field for profile image from DB
   name?: string
   date_joined?: string
   is_active?: boolean
@@ -173,6 +176,7 @@ export default function ProfilePage() {
     role: "",
     bio: "",
     profile: "",
+    photo: "",
     name: "",
     social_links: {
       linkedin: "",
@@ -188,6 +192,7 @@ export default function ProfilePage() {
     role: "", 
     bio: "",
     profile: "",
+    photo: "",
     name: "",
     social_links: {
       linkedin: "",
@@ -233,7 +238,8 @@ export default function ProfilePage() {
             email: data.email || "",
             role: data.role || "student", // Default to student if no role
             bio: data.bio || "",
-            profile: data.profile || data.profile_image || "", // Handle both field names
+            profile: data.profile || "",
+            photo: data.photo || data.profile || "", // Handle photo field from DB (backend updates profile field)
             name: data.name || "",
             date_joined: data.date_joined,
             is_active: data.is_active,
@@ -264,6 +270,7 @@ export default function ProfilePage() {
             role: "student",
             bio: "",
             profile: "",
+            photo: "",
             name: "",
             social_links: {
               linkedin: "",
@@ -310,7 +317,8 @@ export default function ProfilePage() {
           email: data.email || "",
           role: data.role || "student",
           bio: data.bio || "",
-          profile: data.profile || data.profile_image || "",
+          profile: data.profile || "",
+          photo: data.photo || data.profile || "", // Handle photo field from DB (backend updates profile field)
           name: data.name || "",
           date_joined: data.date_joined,
           is_active: data.is_active,
@@ -332,10 +340,15 @@ export default function ProfilePage() {
   const handleEditToggle = () => {
     if (isEditing) {
       // Reset form to original data if canceling
-      setEditForm(userProfile)
+      setEditForm({ ...userProfile })
       setSelectedImageFile(null)
       setImagePreview(null)
       setUsernameError(null)
+      console.log('Edit cancelled, reset form to:', userProfile)
+    } else {
+      // When entering edit mode, ensure we have the latest data
+      setEditForm({ ...userProfile })
+      console.log('Entering edit mode with data:', userProfile)
     }
     setIsEditing(!isEditing)
   }
@@ -393,6 +406,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     try {
       setIsSaving(true)
+      console.log('Starting profile save with editForm:', editForm)
       
       // Only check username if it's being changed and user doesn't have one
       if (editForm.username !== userProfile.username) {
@@ -411,18 +425,25 @@ export default function ProfilePage() {
       if (editForm.name) formData.append('name', editForm.name)
       
       // Add social links
-      if (editForm.social_links?.linkedin) formData.append('linkedin', editForm.social_links.linkedin)
-      if (editForm.social_links?.github) formData.append('github', editForm.social_links.github)
-      if (editForm.social_links?.twitter) formData.append('twitter', editForm.social_links.twitter)
-      if (editForm.social_links?.website) formData.append('website', editForm.social_links.website)
+      const socialLinksData = {
+        linkedin: editForm.social_links?.linkedin || "",
+        github: editForm.social_links?.github || "",
+        twitter: editForm.social_links?.twitter || "",
+        website: editForm.social_links?.website || ""
+      }
+      console.log('Social links being sent:', socialLinksData)
+      formData.append('social_links', JSON.stringify(socialLinksData))
       
       // Add image file if selected
       if (selectedImageFile) {
-        formData.append('profile_image', selectedImageFile)
+        formData.append('photo', selectedImageFile)
+        console.log('Image file selected:', selectedImageFile.name)
       }
       
-      const response = await fetch(`${BASE_URL}/api/users/profile/`, {
-        method: 'PUT',
+      console.log('Sending PATCH request to:', `${BASE_URL}/api/users/profile/update/`)
+      
+      const response = await fetch(`${BASE_URL}/api/users/profile/update/`, {
+        method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           // Don't set Content-Type for FormData, let browser set it with boundary
@@ -432,9 +453,31 @@ export default function ProfilePage() {
 
       if (response.ok) {
         const updatedData = await response.json()
+        console.log('Profile updated successfully:', updatedData)
         
-        // Refresh the profile data to get the latest from server
-        await refreshProfile()
+        // Process the updated data to match our interface structure
+        const processedData: UserProfile = {
+          id: updatedData.id,
+          username: updatedData.username || "",
+          email: updatedData.email || "",
+          role: updatedData.role || "student",
+          bio: updatedData.bio || "",
+          profile: updatedData.profile || "",
+          photo: updatedData.photo || updatedData.profile || "",
+          name: updatedData.name || "",
+          date_joined: updatedData.date_joined,
+          is_active: updatedData.is_active,
+          social_links: {
+            linkedin: updatedData.social_links?.linkedin || updatedData.linkedin || "",
+            github: updatedData.social_links?.github || updatedData.github || "",
+            twitter: updatedData.social_links?.twitter || updatedData.twitter || "",
+            website: updatedData.social_links?.website || updatedData.website || ""
+          }
+        }
+        
+        // Update both userProfile and editForm with the processed data
+        setUserProfile(processedData)
+        setEditForm(processedData)
         
         setIsEditing(false)
         
@@ -452,12 +495,35 @@ export default function ProfilePage() {
       } else {
         const errorData = await response.json()
         console.error('Error response:', errorData)
+        console.error('Response status:', response.status)
         
-        // Handle specific username error from backend
-        if (errorData.username) {
-          setUsernameError(errorData.username[0] || 'Username error')
+        // More detailed error handling
+        if (response.status === 400) {
+          // Handle validation errors
+          if (errorData.username) {
+            setUsernameError(Array.isArray(errorData.username) ? errorData.username[0] : errorData.username)
+          }
+          
+          // Show specific field errors
+          const errorMessages = []
+          if (errorData.name) errorMessages.push(`Name: ${Array.isArray(errorData.name) ? errorData.name[0] : errorData.name}`)
+          if (errorData.bio) errorMessages.push(`Bio: ${Array.isArray(errorData.bio) ? errorData.bio[0] : errorData.bio}`)
+          if (errorData.role) errorMessages.push(`Role: ${Array.isArray(errorData.role) ? errorData.role[0] : errorData.role}`)
+          if (errorData.photo) errorMessages.push(`Photo: ${Array.isArray(errorData.photo) ? errorData.photo[0] : errorData.photo}`)
+          
+          if (errorMessages.length > 0) {
+            alert(`Validation errors:\n${errorMessages.join('\n')}`)
+          } else {
+            alert(errorData.detail || errorData.message || 'Validation failed')
+          }
+        } else if (response.status === 401) {
+          alert('Authentication failed. Please login again.')
+        } else if (response.status === 403) {
+          alert('Permission denied. You can only update your own profile.')
+        } else if (response.status === 404) {
+          alert('Profile not found.')
         } else {
-          alert('Failed to update profile')
+          alert(`Failed to update profile: ${errorData.detail || errorData.message || 'Unknown error'}`)
         }
       }
     } catch (error) {
@@ -562,31 +628,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           <div className="container mx-auto px-6 py-8">
-          {/* Profile Data Summary - for debugging */}
-          {process.env.NODE_ENV === 'development' && (
-            <Card className="bg-slate-800/30 backdrop-blur-sm border-slate-700/30 rounded-2xl mb-6">
-              <CardHeader>
-                <CardTitle className="text-slate-400 text-sm">Profile Data Summary (Development)</CardTitle>
-              </CardHeader>
-              <CardContent className="text-xs text-slate-500">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>Username: {userProfile.username || '(empty)'}</div>
-                  <div>Email: {userProfile.email || '(empty)'}</div>
-                  <div>Role: {userProfile.role || '(empty)'}</div>
-                  <div>Bio: {userProfile.bio ? 'Set' : '(empty)'}</div>
-                  <div>Name: {userProfile.name || '(empty)'}</div>
-                  <div>Profile Image: {userProfile.profile ? 'Set' : '(empty)'}</div>
-                  <div>Date Joined: {userProfile.date_joined || '(empty)'}</div>
-                  <div>LinkedIn: {userProfile.social_links?.linkedin || '(empty)'}</div>
-                  <div>GitHub: {userProfile.social_links?.github || '(empty)'}</div>
-                  <div>Twitter: {userProfile.social_links?.twitter || '(empty)'}</div>
-                  <div>Website: {userProfile.social_links?.website || '(empty)'}</div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-        {/* Profile Header */}
+        {/* Unified Profile Card */}
         <motion.div
           className="mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -595,363 +637,392 @@ export default function ProfilePage() {
         >
           <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 rounded-2xl">
             <CardContent className="p-8">
-              {!isEditing ? (
-                /* VIEW MODE */
-                <div className="space-y-6">
-                  {/* Basic Profile Info */}
-                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
-                    <div className="flex items-center space-x-6 mb-6 md:mb-0">
-                      <div className="relative">
-                        <Avatar className="h-24 w-24">
-                          <AvatarImage 
-                            src={userProfile.profile || "/placeholder.svg?height=96&width=96"} 
-                            alt="Profile" 
-                          />
-                          <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-blue-500 text-white text-2xl">
-                            {userProfile.username?.charAt(0)?.toUpperCase() || userProfile.email?.charAt(0)?.toUpperCase() || "U"}
-                          </AvatarFallback>
-                        </Avatar>
-                        <motion.div
-                          className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center"
-                          animate={{ scale: [1, 1.1, 1] }}
-                          transition={{ duration: 2, repeat: Number.POSITIVE_INFINITY }}
-                        >
-                          <Star className="w-4 h-4 text-white" />
-                        </motion.div>
-                      </div>
-                      <div className="flex-1">
-                        <h1 className="text-3xl font-bold text-white mb-2">
-                          {userProfile.name || userProfile.username || userProfile.email?.split('@')[0] || "Anonymous User"}
-                        </h1>
-                        {userProfile.username && (
-                          <p className="text-slate-400 text-sm mb-1">@{userProfile.username}</p>
-                        )}
-                        <p className="text-slate-300 text-lg mb-3 capitalize">
-                          {userProfile.role || "Student"}
-                        </p>
-                        <div className="flex flex-wrap gap-4 text-sm text-slate-400">
-                          <div className="flex items-center">
-                            <Mail className="w-4 h-4 mr-2" />
-                            {userProfile.email || "No email set"}
-                          </div>
-                          <div className="flex items-center">
-                            <Calendar className="w-4 h-4 mr-2" />
-                            Joined {userProfile.date_joined ? new Date(userProfile.date_joined).toLocaleDateString('en-US', { 
-                              year: 'numeric', 
-                              month: 'long' 
-                            }) : 'Recently'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={handleEditToggle}
-                      variant="outline"
-                      className="border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl"
-                    >
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit Profile
-                    </Button>
-                  </div>
-
-                  {/* Bio Section */}
-                  <div className="bg-slate-700/30 rounded-xl p-4">
-                    <h3 className="text-white font-semibold mb-2">About</h3>
-                    {userProfile.bio ? (
-                      <p className="text-slate-300">{userProfile.bio}</p>
-                    ) : (
-                      <p className="text-slate-500 italic">No bio added yet. Click "Edit Profile" to add one!</p>
-                    )}
-                  </div>
-
-                  {/* Social Links Section */}
-                  <div className="bg-slate-700/30 rounded-xl p-4">
-                    <h3 className="text-white font-semibold mb-3">Social Links</h3>
-                    <div className="flex flex-wrap gap-3">
-                      {userProfile.social_links?.linkedin && (
-                        <a 
-                          href={userProfile.social_links.linkedin} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center w-10 h-10 bg-blue-600/20 border border-blue-500/30 rounded-lg hover:bg-blue-600/30 transition-colors group"
-                          title="LinkedIn Profile"
-                        >
-                          <Linkedin className="w-5 h-5 text-blue-400 group-hover:text-blue-300" />
-                        </a>
-                      )}
-                      {userProfile.social_links?.github && (
-                        <a 
-                          href={userProfile.social_links.github} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center w-10 h-10 bg-slate-600/20 border border-slate-500/30 rounded-lg hover:bg-slate-600/30 transition-colors group"
-                          title="GitHub Profile"
-                        >
-                          <Github className="w-5 h-5 text-slate-400 group-hover:text-slate-300" />
-                        </a>
-                      )}
-                      {userProfile.social_links?.twitter && (
-                        <a 
-                          href={userProfile.social_links.twitter} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center w-10 h-10 bg-blue-500/20 border border-blue-400/30 rounded-lg hover:bg-blue-500/30 transition-colors group"
-                          title="Twitter Profile"
-                        >
-                          <Twitter className="w-5 h-5 text-blue-400 group-hover:text-blue-300" />
-                        </a>
-                      )}
-                      {userProfile.social_links?.website && (
-                        <a 
-                          href={userProfile.social_links.website} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center justify-center w-10 h-10 bg-emerald-600/20 border border-emerald-500/30 rounded-lg hover:bg-emerald-600/30 transition-colors group"
-                          title="Personal Website"
-                        >
-                          <Globe className="w-5 h-5 text-emerald-400 group-hover:text-emerald-300" />
-                        </a>
-                      )}
-                    </div>
-                    {(!userProfile.social_links?.linkedin && !userProfile.social_links?.github && 
-                      !userProfile.social_links?.twitter && !userProfile.social_links?.website) && (
-                      <p className="text-slate-500 italic">No social links added yet. Click "Edit Profile" to add them!</p>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                /* EDIT MODE */
-                <div className="space-y-6">
-                  {/* Header with Save/Cancel buttons */}
-                  <div className="flex items-center justify-between border-b border-slate-600 pb-4">
-                    <h2 className="text-xl font-semibold text-white">Edit Profile</h2>
-                    <div className="flex items-center space-x-3">
-                      <Button
-                        onClick={handleSave}
-                        disabled={isSaving || usernameError !== null || isCheckingUsername}
-                        className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isSaving ? "Saving..." : isCheckingUsername ? "Checking..." : "Save Changes"}
-                      </Button>
-                      <Button
-                        onClick={handleEditToggle}
-                        variant="outline"
-                        className="border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl"
-                      >
+              {/* Header Section with Edit Toggle */}
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-bold text-white">Profile</h2>
+                <div className="flex items-center gap-3">
+                  <Button
+                    onClick={handleEditToggle}
+                    variant="outline"
+                    size="sm"
+                    className="border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl"
+                  >
+                    {isEditing ? (
+                      <>
+                        <X className="w-4 h-4 mr-2" />
                         Cancel
-                      </Button>
-                    </div>
-                  </div>
+                      </>
+                    ) : (
+                      <>
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit
+                      </>
+                    )}
+                  </Button>
+                  
+                  {isEditing && (
+                    <Button
+                      onClick={handleSave}
+                      disabled={isSaving || usernameError !== null || isCheckingUsername}
+                      className="bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isSaving ? "Saving..." : isCheckingUsername ? "Checking..." : "Save"}
+                    </Button>
+                  )}
+                </div>
+              </div>
 
-                  {/* Profile Image Section */}
-                  <div className="flex items-center space-x-6">
+              {/* Profile Content */}
+              <div className="grid lg:grid-cols-3 gap-8">
+                {/* Left Section - Avatar and Basic Info */}
+                <div className="space-y-6">
+                  {/* Profile Picture */}
+                  <div className="flex flex-col items-center">
                     <div className="relative">
-                      <Avatar className="h-24 w-24">
+                      <Avatar className="h-32 w-32 border-4 border-white/20 shadow-2xl">
                         <AvatarImage 
-                          src={imagePreview || userProfile.profile || "/placeholder.svg?height=96&width=96"} 
+                          src={imagePreview || userProfile.photo || userProfile.profile || "/placeholder.svg?height=128&width=128"} 
                           alt="Profile" 
+                          className="object-cover"
                         />
-                        <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-blue-500 text-white text-2xl">
-                          {editForm.username?.charAt(0)?.toUpperCase() || editForm.email?.charAt(0)?.toUpperCase() || "U"}
+                        <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-blue-500 text-white text-3xl font-bold">
+                          {userProfile.username?.charAt(0)?.toUpperCase() || userProfile.email?.charAt(0)?.toUpperCase() || "U"}
                         </AvatarFallback>
                       </Avatar>
-                      <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-emerald-600 transition-colors">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageSelect}
-                          className="hidden"
-                        />
-                        <Camera className="w-4 h-4 text-white" />
-                      </label>
-                    </div>
-                    <div className="flex-1">
-                      <Label className="text-slate-300">Profile Image</Label>
-                      <div className="flex items-center space-x-3 mt-2">
-                        <label className="flex items-center space-x-2 px-4 py-2 bg-slate-700/50 border border-slate-600/50 rounded-lg cursor-pointer hover:bg-slate-600/50 transition-colors">
-                          <Upload className="w-4 h-4 text-slate-300" />
-                          <span className="text-slate-300 text-sm">
-                            {selectedImageFile ? selectedImageFile.name : "Choose New Image"}
-                          </span>
+                      
+                      {isEditing && (
+                        <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-emerald-600 transition-colors">
                           <input
                             type="file"
                             accept="image/*"
                             onChange={handleImageSelect}
                             className="hidden"
                           />
+                          <Camera className="w-4 h-4 text-white" />
                         </label>
-                        {selectedImageFile && (
-                          <span className="text-emerald-400 text-sm">✓ New image selected</span>
-                        )}
-                      </div>
+                      )}
+                    </div>
+                    
+                    {isEditing && selectedImageFile && (
+                      <p className="text-emerald-400 text-sm mt-2">✓ New image selected</p>
+                    )}
+                  </div>
+
+                  {/* Status Badges */}
+                  <div className="flex flex-col gap-2 items-center">
+                    <Badge className="bg-gradient-to-r from-blue-500 to-purple-500 text-white px-3 py-1">
+                      {isEditing ? (
+                        <Select
+                          value={editForm.role}
+                          onValueChange={(value) => handleInputChange('role', value)}
+                        >
+                          <SelectTrigger className="bg-transparent border-none text-white h-auto text-sm min-w-[100px] focus:ring-0 focus:ring-offset-0">
+                            <SelectValue placeholder="Select role" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-800 border-slate-600">
+                            <SelectItem value="user" className="text-white hover:bg-slate-700">User</SelectItem>
+                            <SelectItem value="hoster" className="text-white hover:bg-slate-700">Hoster</SelectItem>
+                            <SelectItem value="student" className="text-white hover:bg-slate-700">Student</SelectItem>
+                            <SelectItem value="developer" className="text-white hover:bg-slate-700">Developer</SelectItem>
+                            <SelectItem value="manager" className="text-white hover:bg-slate-700">Manager</SelectItem>
+                            <SelectItem value="other" className="text-white hover:bg-slate-700">Other</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        userProfile.role || "Student"
+                      )}
+                    </Badge>
+                    
+                    {userProfile.is_active && (
+                      <Badge variant="outline" className="border-emerald-500 text-emerald-400">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Member Since */}
+                  <div className="text-center">
+                    <div className="text-xs text-slate-400 uppercase tracking-wide mb-1">Member Since</div>
+                    <div className="text-slate-300 font-medium">
+                      {userProfile.date_joined ? new Date(userProfile.date_joined).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long',
+                        day: 'numeric'
+                      }) : 'Recently'}
                     </div>
                   </div>
+                </div>
 
-                  {/* Basic Information */}
-                  <div>
-                    <Label htmlFor="name" className="text-slate-300">Name</Label>
-                    <Input
-                      id="name"
-                      value={editForm.name || ""}
-                      onChange={(e) => handleInputChange('name', e.target.value)}
-                      className="bg-slate-700/50 border-slate-600/50 text-white"
-                      placeholder="Enter your full name"
-                    />
-                  </div>
+                {/* Middle Section - Main Info */}
+                <div className="lg:col-span-2 space-y-6">
+                  {/* Name and Username */}
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-slate-400 text-sm">Full Name</Label>
+                      {isEditing ? (
+                        <Input
+                          value={editForm.name || ""}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          className="bg-slate-700/50 border-slate-600/50 text-white text-2xl font-bold mt-1"
+                          placeholder="Enter your full name"
+                        />
+                      ) : (
+                        <h1 className="text-2xl font-bold text-white mt-1">
+                          {userProfile.name || userProfile.username || userProfile.email?.split('@')[0] || "Anonymous User"}
+                        </h1>
+                      )}
+                    </div>
 
-                  <div>
-                    <Label htmlFor="username" className="text-slate-300">Username</Label>
-                    <div className="relative">
-                      <Input
-                        id="username"
-                        value={editForm.username}
-                        onChange={(e) => handleInputChange('username', e.target.value)}
-                        className={`bg-slate-700/50 border-slate-600/50 text-white ${
-                          usernameError ? 'border-red-500' : 
-                          editForm.username && !usernameError && editForm.username !== userProfile.username ? 'border-emerald-500' : ''
-                        }`}
-                        placeholder="Enter your username"
-                        disabled={isCheckingUsername}
-                      />
-                      {isCheckingUsername && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                          <motion.div
-                            className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full"
-                            animate={{ rotate: 360 }}
-                            transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
-                          />
+                    <div>
+                      <Label className="text-slate-400 text-sm">Username</Label>
+                      {isEditing ? (
+                        <div>
+                          <div className="relative">
+                            <Input
+                              value={editForm.username}
+                              onChange={(e) => handleInputChange('username', e.target.value)}
+                              className={`bg-slate-700/50 border-slate-600/50 text-white mt-1 ${
+                                usernameError ? 'border-red-500' : 
+                                editForm.username && !usernameError && editForm.username !== userProfile.username ? 'border-emerald-500' : ''
+                              }`}
+                              placeholder="Enter your username"
+                              disabled={isCheckingUsername}
+                            />
+                            {isCheckingUsername && (
+                              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                                <motion.div
+                                  className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full"
+                                  animate={{ rotate: 360 }}
+                                  transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                                />
+                              </div>
+                            )}
+                          </div>
+                          {usernameError && (
+                            <p className="text-red-400 text-xs mt-1">{usernameError}</p>
+                          )}
+                          {editForm.username && !usernameError && editForm.username !== userProfile.username && !isCheckingUsername && (
+                            <p className="text-emerald-400 text-xs mt-1">✓ Username available</p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-slate-300 text-lg">@{userProfile.username}</span>
+                          <Badge variant="secondary" className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-xs">
+                            Verified
+                          </Badge>
                         </div>
                       )}
                     </div>
-                    {usernameError && (
-                      <p className="text-red-400 text-xs mt-1">{usernameError}</p>
+
+                    <div>
+                      <Label className="text-slate-400 text-sm">Email</Label>
+                      <div className="text-slate-300 mt-1">{userProfile.email}</div>
+                    </div>
+                  </div>
+
+                  {/* Bio Section */}
+                  <div>
+                    <Label className="text-slate-400 text-sm">About</Label>
+                    {isEditing ? (
+                      <Textarea
+                        value={editForm.bio}
+                        onChange={(e) => handleInputChange('bio', e.target.value)}
+                        className="bg-slate-700/50 border-slate-600/50 text-white mt-1"
+                        rows={3}
+                        placeholder="Tell us about yourself..."
+                      />
+                    ) : (
+                      <div className="mt-1">
+                        {userProfile.bio ? (
+                          <p className="text-slate-300 leading-relaxed">{userProfile.bio}</p>
+                        ) : (
+                          <p className="text-slate-500 italic">No bio added yet</p>
+                        )}
+                      </div>
                     )}
-                    {editForm.username && !usernameError && editForm.username !== userProfile.username && !isCheckingUsername && (
-                      <p className="text-emerald-400 text-xs mt-1">✓ Username available</p>
-                    )}
                   </div>
 
+                  {/* Social Links */}
                   <div>
-                    <Label htmlFor="role" className="text-slate-300">Role</Label>
-                    <Input
-                      id="role"
-                      value={editForm.role}
-                      onChange={(e) => handleInputChange('role', e.target.value)}
-                      className="bg-slate-700/50 border-slate-600/50 text-white"
-                      placeholder="e.g., Student, Developer, Manager"
-                    />
-                  </div>
+                    <Label className="text-slate-400 text-sm mb-3 block">Social Links</Label>
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* LinkedIn */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Linkedin className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Label className="text-slate-400 text-xs block mb-1">LinkedIn</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editForm.social_links?.linkedin || ""}
+                              onChange={(e) => handleSocialLinkChange('linkedin', e.target.value)}
+                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm"
+                              placeholder="https://linkedin.com/in/username"
+                            />
+                          ) : (
+                            <div className="text-sm text-slate-300">
+                              {userProfile.social_links?.linkedin ? (
+                                <a 
+                                  href={userProfile.social_links.linkedin} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="hover:text-blue-400 transition-colors flex items-center gap-2 truncate"
+                                >
+                                  <span className="truncate">{userProfile.social_links.linkedin}</span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                </a>
+                              ) : (
+                                <span className="text-slate-500 text-sm">Not set</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                  <div>
-                    <Label htmlFor="bio" className="text-slate-300">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      value={editForm.bio}
-                      onChange={(e) => handleInputChange('bio', e.target.value)}
-                      className="bg-slate-700/50 border-slate-600/50 text-white"
-                      rows={3}
-                      placeholder="Tell us about yourself..."
-                    />
-                  </div>
+                      {/* GitHub */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-slate-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Github className="w-5 h-5 text-slate-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Label className="text-slate-400 text-xs block mb-1">GitHub</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editForm.social_links?.github || ""}
+                              onChange={(e) => handleSocialLinkChange('github', e.target.value)}
+                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm"
+                              placeholder="https://github.com/username"
+                            />
+                          ) : (
+                            <div className="text-sm text-slate-300">
+                              {userProfile.social_links?.github ? (
+                                <a 
+                                  href={userProfile.social_links.github} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="hover:text-slate-300 transition-colors flex items-center gap-2 truncate"
+                                >
+                                  <span className="truncate">{userProfile.social_links.github}</span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                </a>
+                              ) : (
+                                <span className="text-slate-500 text-sm">Not set</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
 
-                  {/* Social Links Section */}
-                  <div>
-                    <Label className="text-slate-300 text-lg font-semibold">Social Links</Label>
-                    <p className="text-slate-400 text-sm mb-4">Add your social media profiles and website</p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="linkedin" className="text-slate-300 flex items-center">
-                          <Linkedin className="w-4 h-4 mr-2 text-blue-400" />
-                          LinkedIn
-                        </Label>
-                        <Input
-                          id="linkedin"
-                          value={editForm.social_links?.linkedin || ""}
-                          onChange={(e) => handleSocialLinkChange('linkedin', e.target.value)}
-                          className="bg-slate-700/50 border-slate-600/50 text-white"
-                          placeholder="https://linkedin.com/in/username"
-                        />
+                      {/* Twitter */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Twitter className="w-5 h-5 text-blue-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Label className="text-slate-400 text-xs block mb-1">Twitter</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editForm.social_links?.twitter || ""}
+                              onChange={(e) => handleSocialLinkChange('twitter', e.target.value)}
+                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm"
+                              placeholder="https://twitter.com/username"
+                            />
+                          ) : (
+                            <div className="text-sm text-slate-300">
+                              {userProfile.social_links?.twitter ? (
+                                <a 
+                                  href={userProfile.social_links.twitter} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="hover:text-blue-400 transition-colors flex items-center gap-2 truncate"
+                                >
+                                  <span className="truncate">{userProfile.social_links.twitter}</span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                </a>
+                              ) : (
+                                <span className="text-slate-500 text-sm">Not set</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <Label htmlFor="github" className="text-slate-300 flex items-center">
-                          <Github className="w-4 h-4 mr-2 text-slate-400" />
-                          GitHub
-                        </Label>
-                        <Input
-                          id="github"
-                          value={editForm.social_links?.github || ""}
-                          onChange={(e) => handleSocialLinkChange('github', e.target.value)}
-                          className="bg-slate-700/50 border-slate-600/50 text-white"
-                          placeholder="https://github.com/username"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="twitter" className="text-slate-300 flex items-center">
-                          <Twitter className="w-4 h-4 mr-2 text-blue-400" />
-                          Twitter
-                        </Label>
-                        <Input
-                          id="twitter"
-                          value={editForm.social_links?.twitter || ""}
-                          onChange={(e) => handleSocialLinkChange('twitter', e.target.value)}
-                          className="bg-slate-700/50 border-slate-600/50 text-white"
-                          placeholder="https://twitter.com/username"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="website" className="text-slate-300 flex items-center">
-                          <Globe className="w-4 h-4 mr-2 text-emerald-400" />
-                          Website
-                        </Label>
-                        <Input
-                          id="website"
-                          value={editForm.social_links?.website || ""}
-                          onChange={(e) => handleSocialLinkChange('website', e.target.value)}
-                          className="bg-slate-700/50 border-slate-600/50 text-white"
-                          placeholder="https://yourwebsite.com"
-                        />
+
+                      {/* Website */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-emerald-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Globe className="w-5 h-5 text-emerald-400" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <Label className="text-slate-400 text-xs block mb-1">Website</Label>
+                          {isEditing ? (
+                            <Input
+                              value={editForm.social_links?.website || ""}
+                              onChange={(e) => handleSocialLinkChange('website', e.target.value)}
+                              className="bg-slate-700/50 border-slate-600/50 text-white text-sm"
+                              placeholder="https://yourwebsite.com"
+                            />
+                          ) : (
+                            <div className="text-sm text-slate-300">
+                              {userProfile.social_links?.website ? (
+                                <a 
+                                  href={userProfile.social_links.website} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer" 
+                                  className="hover:text-emerald-400 transition-colors flex items-center gap-2 truncate"
+                                >
+                                  <span className="truncate">{userProfile.social_links.website}</span>
+                                  <ExternalLink className="w-3 h-3 flex-shrink-0" />
+                                </a>
+                              ) : (
+                                <span className="text-slate-500 text-sm">Not set</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
             </CardContent>
           </Card>
         </motion.div>
 
         {/* Stats Cards */}
         <motion.div
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 sm:mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
         >
           <Card className="bg-gradient-to-br from-emerald-500/20 to-emerald-600/20 backdrop-blur-sm border-emerald-500/30 rounded-2xl">
-            <CardContent className="p-6 text-center">
-              <Trophy className="w-8 h-8 text-emerald-400 mx-auto mb-3" />
-              <p className="text-2xl font-bold text-white">24</p>
-              <p className="text-emerald-400 text-sm">Total Sessions</p>
+            <CardContent className="p-3 sm:p-4 md:p-6 text-center">
+              <Trophy className="w-6 h-6 sm:w-7 md:w-8 sm:h-7 md:h-8 text-emerald-400 mx-auto mb-2 sm:mb-3" />
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">24</p>
+              <p className="text-emerald-400 text-xs sm:text-sm">Total Sessions</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-sm border-blue-500/30 rounded-2xl">
-            <CardContent className="p-6 text-center">
-              <Target className="w-8 h-8 text-blue-400 mx-auto mb-3" />
-              <p className="text-2xl font-bold text-white">86%</p>
-              <p className="text-blue-400 text-sm">Avg Score</p>
+            <CardContent className="p-3 sm:p-4 md:p-6 text-center">
+              <Target className="w-6 h-6 sm:w-7 md:w-8 sm:h-7 md:h-8 text-blue-400 mx-auto mb-2 sm:mb-3" />
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">86%</p>
+              <p className="text-blue-400 text-xs sm:text-sm">Avg Score</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-purple-500/20 to-purple-600/20 backdrop-blur-sm border-purple-500/30 rounded-2xl">
-            <CardContent className="p-6 text-center">
-              <Clock className="w-8 h-8 text-purple-400 mx-auto mb-3" />
-              <p className="text-2xl font-bold text-white">18h</p>
-              <p className="text-purple-400 text-sm">Practice Time</p>
+            <CardContent className="p-3 sm:p-4 md:p-6 text-center">
+              <Clock className="w-6 h-6 sm:w-7 md:w-8 sm:h-7 md:h-8 text-purple-400 mx-auto mb-2 sm:mb-3" />
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">18h</p>
+              <p className="text-purple-400 text-xs sm:text-sm">Practice Time</p>
             </CardContent>
           </Card>
           <Card className="bg-gradient-to-br from-orange-500/20 to-orange-600/20 backdrop-blur-sm border-orange-500/30 rounded-2xl">
-            <CardContent className="p-6 text-center">
-              <Award className="w-8 h-8 text-orange-400 mx-auto mb-3" />
-              <p className="text-2xl font-bold text-white">4</p>
-              <p className="text-orange-400 text-sm">Achievements</p>
+            <CardContent className="p-3 sm:p-4 md:p-6 text-center">
+              <Award className="w-6 h-6 sm:w-7 md:w-8 sm:h-7 md:h-8 text-orange-400 mx-auto mb-2 sm:mb-3" />
+              <p className="text-lg sm:text-xl md:text-2xl font-bold text-white">4</p>
+              <p className="text-orange-400 text-xs sm:text-sm">Achievements</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -1086,11 +1157,11 @@ export default function ProfilePage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                       {achievements.map((achievement, index) => (
                         <motion.div
                           key={achievement.id}
-                          className={`p-4 rounded-xl border-2 transition-all duration-300 ${
+                          className={`p-3 sm:p-4 rounded-xl border-2 transition-all duration-300 ${
                             achievement.earned
                               ? "bg-gradient-to-br from-emerald-500/20 to-blue-500/20 border-emerald-500/30"
                               : "bg-slate-700/30 border-slate-600/30 opacity-60"
@@ -1100,22 +1171,24 @@ export default function ProfilePage() {
                           transition={{ delay: index * 0.1 }}
                           whileHover={{ scale: achievement.earned ? 1.02 : 1 }}
                         >
-                          <div className="flex items-center space-x-3 mb-2">
-                            <span className="text-2xl">{achievement.icon}</span>
-                            <div>
-                              <h4 className={`font-semibold ${achievement.earned ? "text-white" : "text-slate-400"}`}>
-                                {achievement.title}
-                              </h4>
-                              {achievement.earned && achievement.date && (
-                                <p className="text-emerald-400 text-sm">{achievement.date}</p>
-                              )}
+                          <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-2 sm:mb-3">
+                            <div className="flex items-center space-x-3 sm:space-x-0">
+                              <span className="text-xl sm:text-2xl flex-shrink-0">{achievement.icon}</span>
+                              <div className="min-w-0 flex-1 sm:ml-3">
+                                <h4 className={`font-semibold text-sm sm:text-base truncate ${achievement.earned ? "text-white" : "text-slate-400"}`}>
+                                  {achievement.title}
+                                </h4>
+                                {achievement.earned && achievement.date && (
+                                  <p className="text-emerald-400 text-xs sm:text-sm truncate">{achievement.date}</p>
+                                )}
+                              </div>
                             </div>
                           </div>
-                          <p className={`text-sm ${achievement.earned ? "text-slate-300" : "text-slate-500"}`}>
+                          <p className={`text-xs sm:text-sm leading-relaxed ${achievement.earned ? "text-slate-300" : "text-slate-500"}`}>
                             {achievement.description}
                           </p>
                           {!achievement.earned && (
-                            <Badge variant="outline" className="mt-2 border-slate-500 text-slate-400">
+                            <Badge variant="outline" className="mt-2 border-slate-500 text-slate-400 text-xs">
                               Locked
                             </Badge>
                           )}

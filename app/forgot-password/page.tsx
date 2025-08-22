@@ -11,7 +11,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000"
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 export default function ForgotPasswordPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -27,14 +27,49 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
+  // Test server connectivity on component mount
+  useState(() => {
+    const testConnection = async () => {
+      try {
+        console.log('Testing server connectivity...')
+        const response = await fetch(`${BASE_URL}/`, { method: 'GET' })
+        console.log('Server connectivity test:', response.status)
+      } catch (err) {
+        console.error('Server connectivity test failed:', err)
+      }
+    }
+    testConnection()
+  })
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
+    // Debug BASE_URL
+    console.log('BASE_URL:', BASE_URL)
+    console.log('Environment variables:', {
+      NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+      NODE_ENV: process.env.NODE_ENV
+    })
+
+    const endpoint = `${BASE_URL}/api/users/auth/forget-password/`
+    console.log('Sending OTP request to:', endpoint)
+    console.log('Request payload:', { email: formData.email })
+
+    // Check if email is valid
+    if (!formData.email || !formData.email.includes('@')) {
+      setError('Please enter a valid email address')
+      setIsLoading(false)
+      return
+    }
+
     try {
+      // Test network connectivity first
+      console.log('Testing network connectivity...')
+
       // First hit the auth endpoint to send OTP
-      const response = await fetch(`${BASE_URL}/api/users/auth/forget-password/`, {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -42,18 +77,43 @@ export default function ForgotPasswordPage() {
         body: JSON.stringify({ email: formData.email }),
       })
 
-      const data = await response.json()
+      console.log('Response received!')
+      console.log('Response status:', response.status)
+      console.log('Response statusText:', response.statusText)
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()))
+      console.log('Response URL:', response.url)
+
+      // Get response text first to see what we're receiving
+      const responseText = await response.text()
+      console.log('Raw response text:', responseText)
+
+      let data
+      try {
+        data = responseText ? JSON.parse(responseText) : {}
+        console.log('Parsed response data:', data)
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError)
+        console.error('Response was:', responseText)
+        throw new Error(`Invalid response format from server. Got: ${responseText.substring(0, 100)}`)
+      }
 
       if (response.ok) {
         setIsEmailSent(true)
-        // Optionally, pass email to reset-password page if needed for context
-        // router.push(`/reset-password?email=${email}`);
+        console.log('OTP sent successfully')
       } else {
-        setError(data.detail || "Failed to send reset link. Please check your email.")
+        console.error('OTP request failed:', data)
+        setError(data.detail || data.message || data.error || `Server error: ${response.status} ${response.statusText}`)
       }
     } catch (err) {
-      setError("An unexpected error occurred. Please try again later.")
       console.error("Forgot password error:", err)
+
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError("Unable to connect to the server. Please check your internet connection and server status.")
+      } else if (err instanceof Error && err.message.includes('NetworkError')) {
+        setError("Network error: Please check if the server is running and accessible.")
+      } else {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again later.")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -70,6 +130,19 @@ export default function ForgotPasswordPage() {
       return
     }
 
+    if (formData.newPassword.length < 6) {
+      setError("Password must be at least 6 characters long!")
+      setIsLoading(false)
+      return
+    }
+
+    console.log('Sending password reset request to:', `${BASE_URL}/api/users/forget-password/`)
+    console.log('Request payload:', {
+      email: formData.email,
+      new_password: formData.newPassword,
+      otp: formData.otp,
+    })
+
     try {
       // Send email, new password, and OTP to the main forget-password endpoint
       const response = await fetch(`${BASE_URL}/api/users/forget-password/`, {
@@ -84,17 +157,32 @@ export default function ForgotPasswordPage() {
         }),
       })
 
-      const data = await response.json()
+      console.log('Password reset response status:', response.status)
+      console.log('Password reset response headers:', Object.fromEntries(response.headers.entries()))
+
+      let data
+      try {
+        data = await response.json()
+        console.log('Password reset response data:', data)
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response:', jsonError)
+        throw new Error('Invalid response format from server')
+      }
 
       if (response.ok) {
         alert("Password reset successfully! Please login with your new password.")
         router.push("/login")
       } else {
-        setError(data.detail || "Password reset failed. Please try again.")
+        console.error('Password reset failed:', data)
+        setError(data.detail || data.message || data.error || "Password reset failed. Please try again.")
       }
     } catch (err) {
-      setError("An unexpected error occurred. Please try again later.")
       console.error("Password reset error:", err)
+      if (err instanceof TypeError && err.message.includes('fetch')) {
+        setError("Unable to connect to the server. Please check your internet connection.")
+      } else {
+        setError(err instanceof Error ? err.message : "An unexpected error occurred. Please try again later.")
+      }
     } finally {
       setIsLoading(false)
     }

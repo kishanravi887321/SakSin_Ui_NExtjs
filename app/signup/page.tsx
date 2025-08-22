@@ -10,12 +10,21 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowLeft, User } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:8000"
+// Extend Window interface for google
+declare global {
+  interface Window {
+    google: any;
+  }
+}
+
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
 export default function SignUpPage() {
+  const { login } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -31,6 +40,160 @@ export default function SignUpPage() {
   })
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
+
+  // Initialize Google Sign-In for signup
+  useEffect(() => {
+    const initializeGoogleSignIn = () => {
+      console.log('Initializing Google Sign-In for signup...')
+      console.log('Google Client ID:', process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID)
+      
+      if (window.google && window.google.accounts) {
+        console.log('Google accounts available, initializing...')
+        try {
+          window.google.accounts.id.initialize({
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+            callback: handleGoogleSignUp,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          })
+          console.log('Google Sign-In initialized successfully for signup')
+        } catch (error) {
+          console.error('Error initializing Google Sign-In:', error)
+        }
+      } else {
+        console.error('Google accounts not available')
+      }
+    }
+
+    // Load Google Identity Services script
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      console.log('Google script loaded successfully for signup')
+      initializeGoogleSignIn()
+    }
+    script.onerror = (error) => {
+      console.error('Failed to load Google script:', error)
+    }
+    
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]')
+    if (!existingScript) {
+      document.head.appendChild(script)
+    } else {
+      initializeGoogleSignIn()
+    }
+
+    return () => {
+      if (script && document.head.contains(script)) {
+        document.head.removeChild(script)
+      }
+    }
+  }, [])
+
+  const handleGoogleSignUp = async (response: any) => {
+    console.log('Google Sign-Up Response:', response)
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Send the ID token to your backend for signup
+      const backendResponse = await fetch(`${BASE_URL}/api/users/auth/google/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_token: response.credential,
+        }),
+      })
+
+      const data = await backendResponse.json()
+      console.log('Backend response:', data)
+
+      if (backendResponse.ok) {
+        // Successfully authenticated with Google
+        login(data.accessToken, data.refreshToken)
+        
+        if (data.is_new_user) {
+          // New user - redirect to profile completion
+          alert('Welcome to SakSin AI! Please complete your profile.')
+          router.push('/profile')
+        } else {
+          // Existing user - redirect to dashboard
+          router.push('/dashboard')
+        }
+      } else {
+        setError(data.detail || 'Google authentication failed')
+      }
+    } catch (error) {
+      console.error('Google Sign-Up Error:', error)
+      setError('Google authentication failed. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleButtonClick = () => {
+    console.log('Google signup button clicked')
+    console.log('Google available:', !!window.google)
+    console.log('Google accounts available:', !!window.google?.accounts)
+    console.log('Google ID available:', !!window.google?.accounts?.id)
+    
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      try {
+        console.log('Calling Google prompt for signup...')
+        window.google.accounts.id.prompt((notification: any) => {
+          console.log('Google prompt notification:', notification)
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            console.log('Google prompt was not displayed or skipped')
+            // Try alternative method - render button
+            renderGoogleButton()
+          }
+        })
+      } catch (error) {
+        console.error('Error calling Google prompt:', error)
+        setError('Google Sign-In failed to initialize. Please refresh the page and try again.')
+      }
+    } else {
+      console.error('Google Sign-In not properly initialized')
+      setError('Google Sign-In is not available. Please refresh the page and try again.')
+    }
+  }
+
+  const renderGoogleButton = () => {
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      try {
+        // Create a temporary div for the Google button
+        const buttonDiv = document.createElement('div')
+        buttonDiv.id = 'google-signup-button'
+        document.body.appendChild(buttonDiv)
+        
+        window.google.accounts.id.renderButton(buttonDiv, {
+          theme: 'outline',
+          size: 'large',
+          type: 'standard',
+          text: 'signup_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: 250,
+        })
+        
+        // Trigger click on the Google button
+        setTimeout(() => {
+          const googleButton = buttonDiv.querySelector('div[role="button"]')
+          if (googleButton) {
+            (googleButton as HTMLElement).click()
+            document.body.removeChild(buttonDiv)
+          }
+        }, 100)
+      } catch (error) {
+        console.error('Error rendering Google button:', error)
+      }
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -392,10 +555,13 @@ export default function SignUpPage() {
               </div>
 
               {/* Social Sign Up */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="flex justify-center">
                 <Button
+                  type="button"
+                  onClick={handleGoogleButtonClick}
+                  disabled={isLoading}
                   variant="outline"
-                  className="border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl h-12"
+                  className="border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl h-12 w-full max-w-xs"
                 >
                   <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                     <path
@@ -415,16 +581,7 @@ export default function SignUpPage() {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                     />
                   </svg>
-                  Google
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl h-12"
-                >
-                  <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12.017 0C5.396 0 .029 5.367.029 11.987c0 5.079 3.158 9.417 7.618 11.174-.105-.949-.199-2.403.041-3.439.219-.937 1.406-5.957 1.406-5.957s-.359-.72-.359-1.781c0-1.663.967-2.911 2.168-2.911 1.024 0 1.518.769 1.518 1.688 0 1.029-.653 2.567-.992 3.992-.285 1.193.6 2.165 1.775 2.165 2.128 0 3.768-2.245 3.768-5.487 0-2.861-2.063-4.869-5.008-4.869-3.41 0-5.409 2.562-5.409 5.199 0 1.033.394 2.143.889 2.741.097.118.112.221.085.345-.09.375-.293 1.199-.334 1.363-.053.225-.172.271-.402.165-1.495-.69-2.433-2.878-2.433-4.646 0-3.776 2.748-7.252 7.92-7.252 4.158 0 7.392 2.967 7.392 6.923 0 4.135-2.607 7.462-6.233 7.462-1.214 0-2.357-.629-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146C9.57 23.812 10.763 24.009 12.017 24.009c6.624 0 11.99-5.367 11.99-11.988C24.007 5.367 18.641.001.012.001z" />
-                  </svg>
-                  GitHub
+                  Continue with Google
                 </Button>
               </div>
 

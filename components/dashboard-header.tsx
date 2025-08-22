@@ -12,11 +12,76 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Sparkles, Bell, Settings, User, LogOut, Search, Menu } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useAuth } from "@/hooks/use-auth"
+import { useUser } from "@/hooks/use-user"
+import { useRouter } from "next/navigation"
+import { normalizeUserData, getDisplayName, getUserInitials, getProfileImage, UnifiedUserProfile } from "@/lib/user-utils"
 
 export function DashboardHeader() {
   const [notifications] = useState(3)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const { logout, accessToken } = useAuth()
+  const { user, isLoading: userLoading } = useUser()
+  const router = useRouter()
+  const [fallbackUser, setFallbackUser] = useState<any>(null)
+
+  // Debug logging
+  console.log('DashboardHeader - User data:', user)
+  console.log('DashboardHeader - User loading:', userLoading)
+  console.log('DashboardHeader - Access token:', accessToken)
+
+  // Fallback: Try to get user data directly if useUser hook fails
+  useEffect(() => {
+    const fetchUserFallback = async () => {
+      if (!user && accessToken && !userLoading) {
+        try {
+          console.log('Attempting fallback user fetch...')
+          const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/users/profile/`, {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          })
+          
+          if (response.ok) {
+            const userData = await response.json()
+            console.log('Fallback user data:', userData)
+            setFallbackUser(userData)
+          }
+        } catch (error) {
+          console.error('Fallback user fetch failed:', error)
+        }
+      }
+    }
+    
+    fetchUserFallback()
+  }, [user, accessToken, userLoading])
+
+  // Use either the hook user or fallback user, normalized
+  const currentUser: UnifiedUserProfile = normalizeUserData(user || fallbackUser)
+
+  const handleLogout = () => {
+    logout()
+    router.push('/login')
+  }
+
+  // Get display values using utility functions
+  const displayName = getDisplayName(currentUser) || "User"
+  const displayEmail = currentUser.email || ""
+  const profileImage = getProfileImage(currentUser)
+  const userInitials = getUserInitials(currentUser)
+
+  // Add debugging
+  console.log('Dashboard Header - User data:', { 
+    user, 
+    fallbackUser, 
+    currentUser, 
+    displayName, 
+    displayEmail,
+    userLoading,
+    accessToken: !!accessToken 
+  })
 
   return (
     <motion.header
@@ -121,28 +186,36 @@ export function DashboardHeader() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
-                    <AvatarImage src="/placeholder.svg?height=40&width=40" alt="Profile" />
+                    <AvatarImage 
+                      src={profileImage} 
+                      alt="Profile" 
+                    />
                     <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-blue-500 text-white">
-                      AK
+                      {userInitials}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 bg-slate-800 border-slate-700">
                 <div className="p-4 border-b border-slate-700">
-                  <p className="text-white font-medium">Alex Kumar</p>
-                  <p className="text-slate-400 text-sm">alex@example.com</p>
+                  <p className="text-white font-medium">{displayName}</p>
+                  <p className="text-slate-400 text-sm">{displayEmail}</p>
                 </div>
-                <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-700">
-                  <User className="w-4 h-4 mr-2" />
-                  Profile
+                <DropdownMenuItem asChild className="text-slate-300 hover:text-white hover:bg-slate-700">
+                  <Link href="/profile">
+                    <User className="w-4 h-4 mr-2" />
+                    Profile
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem className="text-slate-300 hover:text-white hover:bg-slate-700">
                   <Settings className="w-4 h-4 mr-2" />
                   Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-slate-700" />
-                <DropdownMenuItem className="text-red-400 hover:text-red-300 hover:bg-slate-700">
+                <DropdownMenuItem 
+                  className="text-red-400 hover:text-red-300 hover:bg-slate-700 cursor-pointer"
+                  onClick={handleLogout}
+                >
                   <LogOut className="w-4 h-4 mr-2" />
                   Sign Out
                 </DropdownMenuItem>
@@ -194,6 +267,33 @@ export function DashboardHeader() {
                 Profile
               </Link>
             </nav>
+
+            {/* Mobile Profile Section */}
+            <div className="pt-4 mt-4 border-t border-slate-700/50 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage 
+                    src={profileImage} 
+                    alt="Profile" 
+                  />
+                  <AvatarFallback className="bg-gradient-to-br from-emerald-400 to-blue-500 text-white text-sm">
+                    {userInitials}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-white text-sm font-medium">{displayName}</p>
+                  <p className="text-slate-400 text-xs">{displayEmail}</p>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleLogout}
+                className="text-red-400 hover:text-red-300 hover:bg-slate-700"
+              >
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
           </motion.div>
         )}
       </div>
