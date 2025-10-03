@@ -4,9 +4,9 @@
 /main_src/node_modules
 
 # next.js
-main_src/next/
+/main_src/next/
 /out/
-main_src/.next/
+/main_src/.next/
 # production
 
 /main_src/build
