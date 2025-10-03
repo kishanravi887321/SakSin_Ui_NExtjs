@@ -1,0 +1,604 @@
+"use client"
+
+import type React from "react"
+
+import { motion } from "framer-motion"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Sparkles, Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react"
+import Link from "next/link"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
+
+// Extend Window interface for google
+declare global {
+  interface Window {
+    google: any;
+    handleCredentialResponse: (response: any) => void;
+  }
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL 
+
+console.log("API_BASE_URL:", API_BASE_URL)
+
+export default function LoginPage() {
+  const { login } = useAuth()
+  const [showPassword, setShowPassword] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [showOtpField, setShowOtpField] = useState(false)
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    otp: "",
+    rememberMe: false,
+  })
+  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
+
+  // Initialize Google Sign-In
+  useEffect(() => {
+    const initializeGoogleSignIn = () => {
+      console.log('Initializing Google Sign-In...')
+      console.log('Google Client ID:', process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID)
+      console.log('Current origin:', window.location.origin)
+      console.log('Current hostname:', window.location.hostname)
+      console.log('Current port:', window.location.port)
+      
+      if (window.google && window.google.accounts) {
+        console.log('Google accounts available, initializing...')
+        try {
+          window.google.accounts.id.initialize({
+            client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+            callback: handleGoogleSignIn,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+            ux_mode: 'popup',
+          })
+          console.log('Google Sign-In initialized successfully')
+        } catch (error) {
+          console.error('Error initializing Google Sign-In:', error)
+          setError(`Google Sign-In initialization failed. Please ensure ${window.location.origin} is added to authorized origins in Google Cloud Console.`)
+        }
+      } else {
+        console.error('Google accounts not available')
+      }
+    }
+
+    // Load Google Identity Services script
+    const script = document.createElement('script')
+    script.src = 'https://accounts.google.com/gsi/client'
+    script.async = true
+    script.defer = true
+    script.onload = () => {
+      console.log('Google script loaded successfully')
+      initializeGoogleSignIn()
+    }
+    script.onerror = (error) => {
+      console.error('Failed to load Google script:', error)
+    }
+    
+    // Check if script already exists
+    const existingScript = document.querySelector('script[src="https://accounts.google.com/gsi/client"]')
+    if (!existingScript) {
+      document.head.appendChild(script)
+    } else {
+      initializeGoogleSignIn()
+    }
+
+    return () => {
+      if (script && document.head.contains(script)) {
+        document.head.removeChild(script)
+      }
+    }
+  }, [])
+
+  const handleGoogleSignIn = async (response: any) => {
+    console.log('Google Sign-In Response:', response)
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Send the ID token to your backend
+      const backendResponse = await fetch(`${API_BASE_URL}/api/users/auth/google/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id_token: response.credential,
+        }),
+      })
+
+      console.log('Google auth API response status:', backendResponse.status)
+
+      if (!backendResponse.ok) {
+        const errorText = await backendResponse.text()
+        console.error('Google auth API error:', errorText)
+        throw new Error(`HTTP ${backendResponse.status}: ${errorText}`)
+      }
+
+      const data = await backendResponse.json()
+      console.log('Google auth API response data:', data)
+      
+
+      // Successfully authenticated with Google - store tokens
+      login(data.accessToken, data.refreshToken)
+      console.log('Tokens stored successfully:', {
+        accessToken: data.accessToken ? 'Present' : 'Missing',
+        refreshToken: data.refreshToken ? 'Present' : 'Missing'
+      })
+      
+      if (data.is_new_user) {
+        // New user - might want to redirect to profile completion
+        alert('Welcome! Please complete your profile.')
+        router.push('/profile')
+      } else {
+        // Existing user - redirect to dashboard
+        router.push('/dashboard')
+      }
+    } catch (error) {
+      console.error('Google Sign-In Error:', error)
+      setError('Google authentication failed. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleGoogleButtonClick = () => {
+    console.log('Google button clicked')
+    console.log('Current URL:', window.location.href)
+    console.log('Current origin:', window.location.origin)
+    console.log('Google available:', !!window.google)
+    console.log('Google accounts available:', !!window.google?.accounts)
+    console.log('Google ID available:', !!window.google?.accounts?.id)
+    
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      try {
+        console.log('Calling Google prompt...')
+        window.google.accounts.id.prompt((notification: any) => {
+          console.log('Google prompt notification:', notification)
+          console.log('Notification type:', notification.g)
+          console.log('Is displayed:', !notification.isNotDisplayed())
+          console.log('Is skipped:', notification.isSkippedMoment())
+          
+          // Check for origin error
+          if (notification.g === 'unregistered_origin') {
+            const errorMsg = `Google OAuth Error: Current origin '${window.location.origin}' is not authorized. Please add it to Google Cloud Console → APIs & Credentials → OAuth 2.0 Client IDs.`
+            console.error(errorMsg)
+            setError(errorMsg)
+            return
+          }
+          
+          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+            console.log('Google prompt was not displayed or skipped, trying button render...')
+            renderGoogleButton()
+          }
+        })
+      } catch (error) {
+        console.error('Error calling Google prompt:', error)
+        setError(`Google Sign-In failed: ${error}. Please ensure ${window.location.origin} is added to Google Cloud Console authorized origins.`)
+      }
+    } else {
+      console.error('Google Sign-In not properly initialized')
+      setError('Google Sign-In is not available. Please refresh the page and try again.')
+    }
+  }
+
+  const renderGoogleButton = () => {
+    if (window.google && window.google.accounts && window.google.accounts.id) {
+      try {
+        // Create a temporary div for the Google button
+        const buttonDiv = document.createElement('div')
+        buttonDiv.id = 'google-signin-button'
+        document.body.appendChild(buttonDiv)
+        
+        window.google.accounts.id.renderButton(buttonDiv, {
+          theme: 'outline',
+          size: 'large',
+          type: 'standard',
+          text: 'signin_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: 250,
+        })
+        
+        // Trigger click on the Google button
+        setTimeout(() => {
+          const googleButton = buttonDiv.querySelector('div[role="button"]')
+          if (googleButton) {
+            (googleButton as HTMLElement).click()
+            document.body.removeChild(buttonDiv)
+          }
+        }, 100)
+      } catch (error) {
+        console.error('Error rendering Google button:', error)
+      }
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/login/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      })
+
+      console.log('Login API response status:', response.status)
+      console.log('Login API response headers:', response.headers)
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Login API error:', errorText)
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+
+      const data = await response.json()
+      console.log('Login API response data:', data)
+
+      if (response.ok) {
+        // Assuming your backend sends a flag like 'otp_required' or similar
+        // Or if it returns a token directly, proceed to dashboard
+        if (data.otp_required) {
+          // Example: backend indicates OTP is needed
+          setShowOtpField(true)
+          alert("OTP sent to your email/phone. Please enter it to complete login.")
+        } else if (data.access) {
+          // Example: backend returns JWT token directly
+          login(data.access, data.refresh)
+          console.log('Regular login tokens stored successfully:', {
+            accessToken: data.access ? 'Present' : 'Missing',
+            refreshToken: data.refresh ? 'Present' : 'Missing'
+          })
+          router.push("/dashboard")
+        } else {
+          // Handle other successful but unexpected responses
+          setError("Login successful, but response was unexpected. Redirecting...")
+          router.push("/dashboard")
+        }
+      } else {
+        setError(data.detail || "Login failed. Please check your credentials.")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred. Please try again later.")
+      console.error("Login error:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/users/auth/login/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email, // Send email again for context if backend needs it
+          otp: formData.otp,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        // OTP verified, redirect to dashboard
+        login(data.access, data.refresh)
+        console.log('OTP verification tokens stored successfully:', {
+          accessToken: data.access ? 'Present' : 'Missing',
+          refreshToken: data.refresh ? 'Present' : 'Missing'
+        })
+        router.push("/dashboard")
+      } else {
+        setError(data.detail || "OTP verification failed. Please try again.")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred during OTP verification. Please try again later.")
+      console.error("OTP verification error:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }))
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center p-6">
+      {/* Animated Background Particles */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        {[...Array(20)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-2 h-2 bg-emerald-400/20 rounded-full"
+            animate={{
+              x: [0, 100, 0],
+              y: [0, -100, 0],
+              opacity: [0, 1, 0],
+            }}
+            transition={{
+              duration: Math.random() * 10 + 10,
+              repeat: Number.POSITIVE_INFINITY,
+              delay: Math.random() * 5,
+            }}
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `${Math.random() * 100}%`,
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="w-full max-w-md relative z-10">
+        {/* Back to Home */}
+        <motion.div
+          className="mb-8"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+        >
+          <Link href="/">
+            <Button variant="ghost" className="text-slate-300 hover:text-white p-0">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Home
+            </Button>
+          </Link>
+        </motion.div>
+
+        {/* Login Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.95 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.8 }}
+        >
+          <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700/50 rounded-2xl shadow-2xl">
+            <CardHeader className="text-center pb-8">
+              {/* Logo */}
+              <motion.div className="flex items-center justify-center space-x-3 mb-6" whileHover={{ scale: 1.05 }}>
+                <Sparkles className="w-8 h-8 text-emerald-400" />
+                <span className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                  SakSin AI
+                </span>
+              </motion.div>
+
+              <CardTitle className="text-2xl font-bold text-white mb-2">Welcome Back</CardTitle>
+              <p className="text-slate-400">Sign in to continue your interview preparation journey</p>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              {error && <p className="text-red-500 text-center">{error}</p>}
+              {!showOtpField ? (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {/* Email Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-slate-300 font-medium">
+                      Email Address
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <Input
+                        id="email"
+                        name="email"
+                        type="email"
+                        placeholder="Enter your email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        className="pl-12 bg-slate-700/50 border-slate-600/50 text-white placeholder-slate-400 focus:border-emerald-500/50 focus:ring-emerald-500/20 rounded-xl h-12"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-slate-300 font-medium">
+                      Password
+                    </Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Enter your password"
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        className="pl-12 pr-12 bg-slate-700/50 border-slate-600/50 text-white placeholder-slate-400 focus:border-emerald-500/50 focus:ring-emerald-500/20 rounded-xl h-12"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Remember Me & Forgot Password */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="rememberMe"
+                        name="rememberMe"
+                        checked={formData.rememberMe}
+                        onCheckedChange={(checked) =>
+                          setFormData((prev) => ({ ...prev, rememberMe: checked as boolean }))
+                        }
+                        className="border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                      />
+                      <Label htmlFor="rememberMe" className="text-slate-300 text-sm cursor-pointer">
+                        Remember me
+                      </Label>
+                    </div>
+                    <Link
+                      href="/forgot-password"
+                      className="text-emerald-400 hover:text-emerald-300 text-sm transition-colors"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+
+                  {/* Sign In Button */}
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl h-12 text-lg font-semibold shadow-lg hover:shadow-emerald-500/25 transition-all duration-300"
+                  >
+                    {isLoading ? (
+                      <motion.div
+                        className="w-6 h-6 border-2 border-white border-t-transparent rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                      />
+                    ) : (
+                      "Sign In"
+                    )}
+                  </Button>
+                </form>
+              ) : (
+                <form onSubmit={handleOtpSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="otp" className="text-slate-300 font-medium">
+                      One-Time Password (OTP)
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                      <Input
+                        id="otp"
+                        name="otp"
+                        type="text"
+                        placeholder="Enter 6-digit OTP"
+                        value={formData.otp}
+                        onChange={handleInputChange}
+                        className="pl-12 bg-slate-700/50 border-slate-600/50 text-white placeholder-slate-400 focus:border-emerald-500/50 focus:ring-emerald-500/20 rounded-xl h-12"
+                        maxLength={6}
+                        required
+                      />
+                    </div>
+                    <Button variant="link" className="text-emerald-400 hover:text-emerald-300 text-sm p-0 h-auto">
+                      Resend OTP
+                    </Button>
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 hover:from-emerald-600 hover:to-blue-600 text-white rounded-xl h-12 text-lg font-semibold shadow-lg hover:shadow-emerald-500/25 transition-all duration-300"
+                  >
+                    {isLoading ? (
+                      <motion.div
+                        className="w-6 h-6 border-2 border-white border-t-transparent rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Number.POSITIVE_INFINITY, ease: "linear" }}
+                      />
+                    ) : (
+                      "Verify OTP"
+                    )}
+                  </Button>
+                </form>
+              )}
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-600/50" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 bg-slate-800/50 text-slate-400">Or continue with</span>
+                </div>
+              </div>
+
+              {/* Social Login */}
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  onClick={handleGoogleButtonClick}
+                  disabled={isLoading}
+                  variant="outline"
+                  className="border-slate-600/50 text-slate-300 hover:bg-slate-700/50 bg-transparent rounded-xl h-12 w-full max-w-xs"
+                >
+                  <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  Continue with Google
+                </Button>
+              </div>
+
+              {/* Sign Up Link */}
+              <div className="text-center">
+                <p className="text-slate-400">
+                  Don't have an account?{" "}
+                  <Link
+                    href="/signup"
+                    className="text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
+                  >
+                    Sign up for free
+                  </Link>
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Footer */}
+        <motion.div
+          className="mt-8 text-center text-slate-400 text-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+        >
+          <p>
+            By signing in, you agree to our{" "}
+            <Link href="/terms" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+              Privacy Policy
+            </Link>
+          </p>
+        </motion.div>
+      </div>
+    </div>
+  )
+}

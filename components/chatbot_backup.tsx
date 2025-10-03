@@ -153,7 +153,7 @@ export function Chatbot() {
     try {
       const token = localStorage.getItem('accessToken') || localStorage.getItem('token')
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/chat/get/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/chat/get/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -209,7 +209,7 @@ export function Chatbot() {
             timestamp: new Date().toISOString()
           }
       
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/chat/feed/`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8001'}/chat/feed/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
