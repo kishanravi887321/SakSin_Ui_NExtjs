@@ -4,12 +4,12 @@
 /main_src/node_modules
 
 # next.js
-main_src/.next/
+main_src/next/
 /out/
-.next/
+main_src/.next/
 # production
 
-/build
+/main_src/build
 
 # debug
 npm-debug.log*
