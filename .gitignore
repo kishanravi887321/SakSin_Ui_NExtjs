@@ -2,13 +2,19 @@
 
 # dependencies
 /node_modules
+/main_src/node_modules
+**/node_modules
 
 # next.js
 /.next/
+/main_src/.next/
+**/.next/
 /out/
 .next/
+
 # production
 /build
+/main_src/build
 
 # debug
 npm-debug.log*
@@ -16,8 +22,12 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files
+# local env files
 .env*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # vercel
 .vercel
@@ -25,3 +35,47 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Package manager lock files (keep only one)
+package-lock.json
+yarn.lock
+# Keep pnpm-lock.yaml if you're using pnpm
+
+# Backup files
+*_backup.*
+*_old.*
+chatbot_backup.tsx
+chatbot_clean.tsx
+
+# Temporary files
+*.tmp
+*.temp
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# eslint cache
+.eslintcache
+
+# turbo
+.turbo
