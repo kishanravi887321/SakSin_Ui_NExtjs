@@ -4,7 +4,7 @@
 /main_src/node_modules
 
 # next.js
-/.next/
+main_src/.next/
 /out/
 .next/
 # production
