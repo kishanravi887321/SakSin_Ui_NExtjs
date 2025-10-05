@@ -1,10 +1,18 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import { LayoutWrapper } from "@/components/layout-wrapper"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"] })
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: '#10b981',
+}
 
 export const metadata: Metadata = {
   title: "SakSin - AI Interview Platform",
@@ -72,12 +80,6 @@ export const metadata: Metadata = {
         url: '/icon-152x152.png',
       },
     ],
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
   },
   appleWebApp: {
     title: 'SakSin',
