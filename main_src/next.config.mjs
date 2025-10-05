@@ -30,17 +30,26 @@ const nextConfig = {
 
 const pwaConfig = withPWA({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
+  disable: false, // Enable PWA in all environments
   register: true,
   skipWaiting: true,
+  sw: 'sw.js',
+  fallbacks: {
+    document: '/offline',
+  },
   runtimeCaching: [
     {
       urlPattern: /^https?.*/,
       handler: 'NetworkFirst',
       options: {
-        cacheName: 'offlineCache',
+        cacheName: 'https-calls',
+        networkTimeoutSeconds: 15,
         expiration: {
-          maxEntries: 200,
+          maxEntries: 150,
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
         },
       },
     },
