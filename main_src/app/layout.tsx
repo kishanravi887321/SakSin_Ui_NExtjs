@@ -76,13 +76,20 @@ export const metadata: Metadata = {
   viewport: {
     width: 'device-width',
     initialScale: 1,
-    maximumScale: 1,
-    userScalable: false,
+    maximumScale: 5,
+    userScalable: true,
   },
   appleWebApp: {
     title: 'SakSin',
     statusBarStyle: 'default',
     capable: true,
+  },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+    'application-name': 'SakSin',
+    'msapplication-TileColor': '#10b981',
+    'theme-color': '#10b981',
   },
 }
 
